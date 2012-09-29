@@ -78,7 +78,7 @@
                              (cons goal goal-stack))))
     (unless (null state2)
       ;; Return an updated state
-      (dbg-indent :gps (length goal-stack) "Action: ~a" (op-action op))
+      (dbg-indent :action (length goal-stack) "Action: ~a" (op-action op))
       (append (remove-if #'(lambda (x) 
                              (member-equal x (op-del-list op)))
                          state2)
@@ -248,7 +248,10 @@
   (some #'(lambda (op) 
             (let ((new-state (apply-op state goal op goal-stack)))
               (if (and (not (null new-state))
-                       (achieve-all new-state remaining-goals goal-stack))
+                       (achieve-all new-state remaining-goals goal-stack)
+                       (notany #'(lambda (del-item)
+                                   (member del-item goal-stack))
+                               (op-del-list op)))
                   new-state
                 nil)))
          (appropriate-ops goal state))
