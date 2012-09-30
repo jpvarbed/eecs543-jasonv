@@ -35,11 +35,13 @@
 ;;; ==============================
 
 (defvar *ops* nil "A list of available operators.")
+(defvar *proc-goals* nil "A list of protected goals.")
 
 (defstruct op "An operation"
   (action nil) (preconds nil) (add-list nil) (del-list nil))
 
 (defun GPS (state goals &optional (*ops* *ops*))
+  (print "running task 2 version...")
   "General Problem Solver: from state, achieve goals using *ops*."
   (remove-if #'atom (achieve-all (cons '(start) state) goals nil)))
 
@@ -87,6 +89,7 @@
 (defun appropriate-p (goal op)
   "An op is appropriate to a goal if it is in its add list."
   (member-equal goal (op-add-list op)))
+
 
 ;;; ==============================
 
@@ -148,9 +151,10 @@
 ;;; ==============================
 
 (defun GPS (state goals &optional (*ops* *ops*))
+  (print "running task 2 version...")
   "General Problem Solver: from state, achieve goals using *ops*."
   (find-all-if #'action-p
-               (achieve-all (cons '(start) state) goals nil nil)))
+               (achieve-all (cons '(start) state) goals nil)))
 
 (defun action-p (x)
   "Is x something that is (start) or (executing ...)?"
@@ -199,19 +203,17 @@
 
 ;;; ==============================
 
-(defun achieve-all (state goals goal-stack done-already)
+(defun achieve-all (state goals goal-stack)
   "Achieve each goal, trying several orderings."
-  (some #'(lambda (goals) (achieve-each state goals goal-stack done-already))
+  (some #'(lambda (goals) (achieve-each state goals goal-stack))
         (orderings goals)))
 
-(defun achieve-each (state goals goal-stack done-already)
+(defun achieve-each (state goals goal-stack)
   "Achieve each goal, and make sure they still hold at the end."
   (let ((current-state state))
     (if (and (every #'(lambda (g)
-                        (progn (setf current-state
-                                 (achieve current-state g goal-stack (set-difference goals g) done-already))
-                          );add 
-                        )
+                        (setf current-state
+                              (achieve current-state g goal-stack (set-difference goals g))))
                     goals)
              (subsetp goals current-state :test #'equal))
         current-state)))
@@ -223,41 +225,41 @@
 
 ;;; ==============================
 
-(defun achieve (state goal goal-stack remaining-goals done-already)
+(defun achieve (state goal goal-stack remaining-goals)
   "A goal is achieved if it already holds,
   or if there is an appropriate op for it that is applicable."
   (dbg-indent :achieve (length goal) "Achieve: Goal => ~a" goal)
-  ;(dbg-indent :gps (length state) "State: ~a" state)
-  (dbg-indent :achieve (length goal-stack) "Achieve: Goal Stack => ~a" goal-stack)
+  (dbg-indent :gps (length state) "State: ~a" state)
+  (dbg-indent :achieve (length state) "Achieve: State => ~a" state)
+  (dbg-indent :proc (length *proc-goals*) "~&Proc-goals: ~a~%" *proc-goals*)
   
   ;if the goal is already in state, return state
-  (cond ((member-equal goal state) state) 
-        
-        ;can't use goals we are trying to achieve (on the goal-stack) as a means for other goals
-        ;this prevents infinite recursion
-        ((member-equal goal goal-stack) nil)
-        
-        ;some will return the first operator that achieves the current goal
-        ;we need to make sure we can achieve-all the rest of the goals
-        (t (checkBeforeLeaping state goal goal-stack remaining-goals nil))))
+  (let ((new-state (cond ((member-equal goal state) state) 
+                         ((member-equal goal goal-stack) nil)
+                         (t (checkBeforeLeaping state goal goal-stack remaining-goals)))))
+    ;(format t "~&new-state: ~a" new-state)
+    new-state))
 
 
-(defun checkBeforeLeaping (state goal goal-stack remaining-goals done-already)
+(defun checkBeforeLeaping (state goal goal-stack remaining-goals)
   
   (dbg-indent :leap (length goal) "checkBeforeLeaping: Goal => ~a" goal)
   
   ;find all approriate operations and try to apply them all to current goal
   (some #'(lambda (op) 
-            (let ((new-state (apply-op state goal op goal-stack)))
+            (let ((new-state (apply-op state goal op goal-stack))
+                  (pred (notany #'(lambda (del-item)
+                                     (member-equal del-item *proc-goals*))
+                                (op-del-list op))))
+             
               (if (and (not (null new-state))
                        (achieve-all new-state remaining-goals goal-stack)
-                       (notany #'(lambda (del-item)
-                                   (member del-item done-already))
-                               (op-del-list op)))
-                  new-state
+                       (not (null pred)))
+                  (progn
+                    (setf *proc-goals* (append *proc-goals* (rest (op-add-list op))))
+                    new-state)
                 nil)))
-         (appropriate-ops goal state))
-  )
+         (appropriate-ops goal state)))
 
 
 ;gives us a list of which operations 
