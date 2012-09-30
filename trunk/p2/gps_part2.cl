@@ -150,7 +150,7 @@
 (defun GPS (state goals &optional (*ops* *ops*))
   "General Problem Solver: from state, achieve goals using *ops*."
   (find-all-if #'action-p
-               (achieve-all (cons '(start) state) goals nil)))
+               (achieve-all (cons '(start) state) goals nil nil)))
 
 (defun action-p (x)
   "Is x something that is (start) or (executing ...)?"
@@ -199,17 +199,19 @@
 
 ;;; ==============================
 
-(defun achieve-all (state goals goal-stack)
+(defun achieve-all (state goals goal-stack done-already)
   "Achieve each goal, trying several orderings."
-  (some #'(lambda (goals) (achieve-each state goals goal-stack))
+  (some #'(lambda (goals) (achieve-each state goals goal-stack done-already))
         (orderings goals)))
 
-(defun achieve-each (state goals goal-stack)
+(defun achieve-each (state goals goal-stack done-already)
   "Achieve each goal, and make sure they still hold at the end."
   (let ((current-state state))
     (if (and (every #'(lambda (g)
-                        (setf current-state
-                              (achieve current-state g goal-stack (set-difference goals g))))
+                        (progn (setf current-state
+                                 (achieve current-state g goal-stack (set-difference goals g) done-already))
+                          );add 
+                        )
                     goals)
              (subsetp goals current-state :test #'equal))
         current-state)))
@@ -221,7 +223,7 @@
 
 ;;; ==============================
 
-(defun achieve (state goal goal-stack remaining-goals)
+(defun achieve (state goal goal-stack remaining-goals done-already)
   "A goal is achieved if it already holds,
   or if there is an appropriate op for it that is applicable."
   (dbg-indent :achieve (length goal) "Achieve: Goal => ~a" goal)
@@ -237,10 +239,10 @@
         
         ;some will return the first operator that achieves the current goal
         ;we need to make sure we can achieve-all the rest of the goals
-        (t (checkBeforeLeaping state goal goal-stack remaining-goals))))
+        (t (checkBeforeLeaping state goal goal-stack remaining-goals nil))))
 
 
-(defun checkBeforeLeaping (state goal goal-stack remaining-goals)
+(defun checkBeforeLeaping (state goal goal-stack remaining-goals done-already)
   
   (dbg-indent :leap (length goal) "checkBeforeLeaping: Goal => ~a" goal)
   
@@ -250,7 +252,7 @@
               (if (and (not (null new-state))
                        (achieve-all new-state remaining-goals goal-stack)
                        (notany #'(lambda (del-item)
-                                   (member del-item goal-stack))
+                                   (member del-item done-already))
                                (op-del-list op)))
                   new-state
                 nil)))
@@ -269,7 +271,7 @@
                            (op-preconds op)))))
 
 ;;; ==============================
-(gps sstart sgoal)
+
 (defun permutations (bag)
   "Return a list of all the permutations of the input."
   ;; If the input is nil, there is only one permutation:
