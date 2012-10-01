@@ -35,7 +35,7 @@
 ;;; ==============================
 
 (defvar *ops* nil "A list of available operators.")
-(defvar *proc-goals* nil "A list of protected goals.")
+(defparameter *proc-goals* nil "A list of protected goals.")
 
 (defstruct op "An operation"
   (action nil) (preconds nil) (add-list nil) (del-list nil))
@@ -205,6 +205,7 @@
 
 (defun achieve-all (state goals goal-stack)
   "Achieve each goal, trying several orderings."
+  (dbg-indent :proc-end (length *proc-goals*) "~&Proc-goals: ~a~%" *proc-goals*)
   (some #'(lambda (goals) (achieve-each state goals goal-stack))
         (orderings goals)))
 
@@ -253,8 +254,8 @@
                                 (op-del-list op))))
              
               (if (and (not (null new-state))
-                       (achieve-all new-state remaining-goals goal-stack)
-                       (not (null pred)))
+                       (not (null pred))
+                       (achieve-all new-state remaining-goals goal-stack))
                   (progn
                     (setf *proc-goals* (append *proc-goals* (rest (op-add-list op))))
                     new-state)

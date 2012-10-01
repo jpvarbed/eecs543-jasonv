@@ -35,13 +35,15 @@
 ;;; ==============================
 
 (defvar *ops* nil "A list of available operators.")
+(defparameter *proc-goals* nil "A list of protected goals.")
 
 (defstruct op "An operation"
   (action nil) (preconds nil) (add-list nil) (del-list nil))
 
 (defun GPS (state goals &optional (*ops* *ops*))
+  (print "running task 2 version...")
   "General Problem Solver: from state, achieve goals using *ops*."
-  (remove-if #'atom (achieve-all (cons '(start) state) goals nil)))
+  (remove-if #'atom (achieve-all (cons '(start) state) goals nil nil)))
 
 ;;; ==============================
 
@@ -71,14 +73,14 @@
 
 ;;; ==============================
 
-(defun apply-op (state goal op goal-stack)
+(defun apply-op (state goal op goal-stack proc-goals)
   "Return a new, transformed state if op is applicable."
   (dbg-indent :gps-op (length goal-stack) "Apply-op: Consider => ~a" (op-action op))
   (let ((state2 (achieve-all state (op-preconds op) 
-                             (cons goal goal-stack))))
+                             (cons goal goal-stack) proc-goals)))
     (unless (null state2)
       ;; Return an updated state
-      (dbg-indent :gps-op (length goal-stack) "Action: ~a" (op-action op))
+      (dbg-indent :action (length goal-stack) "Action: ~a" (op-action op))
       (append (remove-if #'(lambda (x) 
                              (member-equal x (op-del-list op)))
                          state2)
@@ -87,6 +89,7 @@
 (defun appropriate-p (goal op)
   "An op is appropriate to a goal if it is in its add list."
   (member-equal goal (op-add-list op)))
+
 
 ;;; ==============================
 
@@ -148,9 +151,10 @@
 ;;; ==============================
 
 (defun GPS (state goals &optional (*ops* *ops*))
+  (print "running task 2 version...")
   "General Problem Solver: from state, achieve goals using *ops*."
   (find-all-if #'action-p
-               (achieve-all (cons '(start) state) goals nil)))
+               (achieve-all (cons '(start) state) goals nil nil)))
 
 (defun action-p (x)
   "Is x something that is (start) or (executing ...)?"
@@ -199,17 +203,20 @@
 
 ;;; ==============================
 
-(defun achieve-all (state goals goal-stack)
+(defun achieve-all (state goals goal-stack proc-goals)
   "Achieve each goal, trying several orderings."
-  (some #'(lambda (goals) (achieve-each state goals goal-stack))
+  (dbg-indent :proc-end (length proc-goals) "~&Proc-goals: ~a~%" proc-goals)
+  (some #'(lambda (goals) (multiple-value-bind (cs-v proc-v) (achieve-each state goals goal-stack proc-goals) 
+                            (progn (setf proc-goals proc-v) cs-v)))
         (orderings goals)))
 
-(defun achieve-each (state goals goal-stack)
+(defun achieve-each (state goals goal-stack proc-goals)
   "Achieve each goal, and make sure they still hold at the end."
   (let ((current-state state))
     (if (and (every #'(lambda (g)
-                        (setf current-state
-                              (achieve current-state g goal-stack (set-difference goals g))))
+                        (multiple-value-bind (current-state-v proc-goals-v)
+                            (achieve current-state g goal-stack (set-difference goals g) proc-goals)
+                        (progn (setf current-state current-state-v) (setf proc-goals proc-goals-v) (values current-state proc-goals))))
                     goals)
              (subsetp goals current-state :test #'equal))
         current-state)))
@@ -221,37 +228,48 @@
 
 ;;; ==============================
 
-(defun achieve (state goal goal-stack remaining-goals)
+(defun achieve (state goal goal-stack remaining-goals proc-goals)
   "A goal is achieved if it already holds,
   or if there is an appropriate op for it that is applicable."
   (dbg-indent :achieve (length goal) "Achieve: Goal => ~a" goal)
   (dbg-indent :gps (length state) "State: ~a" state)
-  (dbg-indent :achieve (length goal-stack) "Achieve: Goal Stack => ~a" goal-stack)
+  (dbg-indent :achieve (length state) "Achieve: State => ~a" state)
+  (dbg-indent :proc-achieve (length proc-goals) "~&Proc-goals: ~a~%" proc-goals)
   
   ;if the goal is already in state, return state
-  (cond ((member-equal goal state) state) 
-        
-        ;can't use goals we are trying to achieve (on the goal-stack) as a means for other goals
-        ;this prevents infinite recursion
-        ((member-equal goal goal-stack) nil)
-        
-        ;some will return the first operator that achieves the current goal
-        ;we need to make sure we can achieve-all the rest of the goals
-        (t (checkBeforeLeaping state goal goal-stack remaining-goals))))
+  (let ((new-state (cond ((member-equal goal state) state) 
+                         ((member-equal goal goal-stack) nil)
+                         (t 1))))
+    
+    (if (equal new-state 1)
+        (progn (setf new-state nil) 
+          (multiple-value-bind (new-state-var proc-goals-var) (checkBeforeLeaping state goal goal-stack remaining-goals proc-goals) (progn (format t "achieve goal v ~a~%" proc-goals-var)(setf new-state new-state-var) (setf proc-goals proc-goals-var)))
+          (format t "in achieve goals are ~a and state ~a~%" proc-goals new-state)
+          (values new-state proc-goals))
+      (values new-state proc-goals)))
+  )
 
 
-(defun checkBeforeLeaping (state goal goal-stack remaining-goals)
+(defun checkBeforeLeaping (state goal goal-stack remaining-goals proc-goals)
   
   (dbg-indent :leap (length goal) "checkBeforeLeaping: Goal => ~a" goal)
+  (dbg-indent :proc-check (length proc-goals) "checkProc-goals: ~a~%" proc-goals)
   ;find all approriate operations and try to apply them all to current goal
   (some #'(lambda (op) 
-            (let ((new-state (apply-op state goal op goal-stack)))
+            (let ((new-state (apply-op state goal op goal-stack proc-goals))
+                  (pred (notany #'(lambda (del-item)
+                                     (member-equal del-item proc-goals))
+                                (op-del-list op))))
+             
               (if (and (not (null new-state))
-                       (achieve-all new-state remaining-goals goal-stack))
-                  new-state
+                       (not (null pred))
+                       (achieve-all new-state remaining-goals goal-stack proc-goals))
+                  (progn
+                    (setf proc-goals (append proc-goals (rest (op-add-list op))))
+                    (format t "check proc-goals is ~a checkstate is ~a~%" proc-goals new-state)
+                    (values new-state proc-goals))
                 nil)))
-         (appropriate-ops goal state))
-  )
+         (appropriate-ops goal state)))
 
 
 ;gives us a list of which operations 
