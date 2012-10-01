@@ -206,8 +206,12 @@
 (defun achieve-all (state goals goal-stack proc-goals)
   "Achieve each goal, trying several orderings."
   (dbg-indent :proc-end (length proc-goals) "~&Proc-goals: ~a~%" proc-goals)
-  (some #'(lambda (goals) (achieve-each state goals goal-stack proc-goals))
-        (orderings goals)))
+  (let ((tmp nil))
+    (some #'(lambda (goals) (progn (setf tmp (achieve-each state goals goal-stack proc-goals)))
+              (setf proc-goals (first (rest tmp)))
+              (first tmp)
+              )
+        (orderings goals))))
 
 (defun achieve-each (state goals goal-stack proc-goals)
   "Achieve each goal, and make sure they still hold at the end."
@@ -219,10 +223,12 @@
                           ;(achieve current-state g goal-stack (set-difference goals g) proc-goals) (list current-state proc-goals)))
                           (setf hold (achieve current-state g goal-stack (set-difference goals g) proc-goals))
                           (setf current-state (first hold))
-                          (setf proc-goals (rest hold))))
+                          (setf proc-goals (first (rest hold))) 
+                          ;;(format t "in each state: ~a goals: ~a ~%" current-state proc-goals)
+                          current-state))
                     goals)
              (subsetp goals current-state :test #'equal))
-        current-state)))
+        (list current-state proc-goals))))
 
 (defun orderings (l) 
   (if (> (length l) 1)
@@ -249,10 +255,10 @@
         (progn (setf new-state nil) 
           (setf tmp (checkBeforeLeaping state goal goal-stack remaining-goals proc-goals))
           ;(setf tmp (multiple-value-bind (new-state proc-goals) (checkBeforeLeaping state goal goal-stack remaining-goals proc-goals) (list new-state proc-goals)))
-          (setf proc-goals (rest tmp)) ; starts off with a nil
+          (setf proc-goals (first (rest tmp))) ; starts off with a nil
           (setf new-state (first tmp))
-          (format t "in achieve goals are ~a and state ~a~%" proc-goals new-state)
-          (format t "in achieve the tmp is are ~a~%" tmp)
+          ;;(format t "in achieve goals are ~a and state ~a~%" proc-goals new-state)
+          ;(format t "in achieve the tmp is are ~a~%" tmp)
           (list new-state proc-goals))
       (list new-state proc-goals)))
   )
@@ -263,10 +269,13 @@
   (dbg-indent :leap (length goal) "checkBeforeLeaping: Goal => ~a" goal)
   (dbg-indent :proc-check (length proc-goals) "checkProc-goals: ~a~%" proc-goals)
   ;find all approriate operations and try to apply them all to current goal
+  (format t "begin ~%")
   (some #'(lambda (op) 
             (let ((new-state (apply-op state goal op goal-stack proc-goals))
                   (pred (notany #'(lambda (del-item)
-                                     (member-equal del-item proc-goals))
+                                    (progn 
+                                      ;(format t "comparing :~a to :~a result:~a~%" del-item proc-goals (member-equal del-item proc-goals));so its not this
+                                      (member-equal del-item proc-goals)))
                                 (op-del-list op))))
              
               (if (and (not (null new-state))
@@ -274,8 +283,8 @@
                        (achieve-all new-state remaining-goals goal-stack proc-goals))
                   (progn
                     (setf proc-goals (append proc-goals (rest (op-add-list op))))
-                    (format t "check proc-goals is ~a checkstate is ~a~%" proc-goals new-state)
-                    (format t "ok the value is ~a~%" (multiple-value-bind (firsty secondy) (values new-state proc-goals) (list firsty secondy)))
+                    ;;(format t "check proc-goals is ~a checkstate is ~a~%" proc-goals new-state)
+                    ;(format t "check ok the value is ~a~%" (multiple-value-bind (firsty secondy) (values new-state proc-goals) (list firsty secondy)))
                     (list new-state proc-goals))
                     ;(values new-state proc-goals))
                 nil)))
