@@ -8,6 +8,16 @@
 
 ;;; The basic are in auxfns.lisp; look for "PATTERN MATCHING FACILITY"
 
+;;; ==============================
+
+(defparameter *block-rules*
+ '((((move ?x from ?y to ?z)
+     (something)))
+   ))
+
+;;; ==============================
+
+
 (defun variable-p (x)
   "Is x a variable (a symbol beginning with `?')?"
   (and (symbolp x) (equal (elt (symbol-name x) 0) #\?)))

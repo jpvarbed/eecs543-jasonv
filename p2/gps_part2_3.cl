@@ -79,22 +79,34 @@
   (let* ((state2 (achieve-all state (op-preconds op) 
                               (cons goal goal-stack)))
          (difference (set-difference state2 *initial*))
+         (tmp nil)
         (pred (notany #'(lambda (del-item)
                   (progn 
-                          (format t "comparing :~a to :~a result:~a ~%action: ~a~%" del-item difference (member-equal del-item difference) (op-action op) );so its not this
-                          (format t "new state: ~a~%" state2)
-                          (format t "done so far: ~a~%~%" state)
+                          ;(format t "comparing :~a to :~a result:~a ~%action: ~a~%" del-item difference (member-equal del-item difference) (op-action op) );so its not this
+                          ;(format t "new state: ~a~%" state2)
+                          ;(format t "done so far: ~a~%~%" state)
                     (member-equal del-item difference)))
                       (op-del-list op))))
+    (progn
+      (if (equal (op-action op) '(MOVE B FROM TABLE TO C))
+          (progn (format t "if c is clear, then this should be the answer trail~%")
+            (dbg-indent :appDiff (length goal-stack) "pred is:~a~%" pred)
+            (dbg-indent :op-curr (length goal-stack) "state: ~a~%" state)
+      (dbg-indent :op-state (length goal-stack) "state2: ~a~%~%" state2)
+            )
+        )
     (unless (or (null state2) (null pred))
       ;; Return an updated state
       (dbg-indent :action (length goal-stack) "AppAction: ~a~%" (op-action op))
       (dbg-indent :appDiff (length goal-stack) "pred is:~a~%" pred)
-      (dbg-indent :op-state (length goal-stack) "state2: ~a~%~%" state2)
-      (append (remove-if #'(lambda (x) 
+      (dbg-indent :op-state (length goal-stack) "state2: ~a~%" state2)
+      (setf tmp (append (remove-if #'(lambda (x) 
                              (member-equal x (op-del-list op)))
                          state2)
-              (op-add-list op)))))
+                        (op-add-list op)))
+      (format t "new state returned:~a~%~%" tmp)
+      tmp
+      ))))
 
 (defun appropriate-p (goal op)
   "An op is appropriate to a goal if it is in its add list."
@@ -261,18 +273,28 @@
   (some #'(lambda (op) 
             (let* ((new-state (apply-op state goal op goal-stack))
                    (difference (calculateDifference state new-state))
+                   (op-list (appropriate-ops goal state))
                    (pred (notany #'(lambda (del-item)
                                     (progn 
                                       ;;(format t "comparing :~a to :~a result:~a ~%action: ~a~%" del-item difference (member-equal del-item difference) (op-action op) );so its not this
                                      ;; (format t "new state: ~a~%" new-state)
                                      ;; (format t "done so far: ~a~%~%" state)
-                                      ;(if (equal del-item '(B ON A)) (break))
+                                      ;(if (equal del-item '(A ON TABLE)) (break))
                                       (member-equal del-item difference)))
-                                (op-del-list op))))
+                                 (op-del-list op))))
+              (progn 
+
+                (if (equal (op-action op) '(MOVE B FROM TABLE TO C))
+                    (progn 
+                                      (format t "ops to consider ~a~%" op-list)
+                      (format t "checknew state: ~a~%" new-state)
+                      (format t "checkcurrent: ~a~%" state)
+                      (format t "checkremaining: ~a~%~%" remaining-goals)
+                      ))
               (if (and (not (null new-state))
                        (achieve-all new-state remaining-goals goal-stack))
                   new-state
-                nil)))
+                nil))))
          (appropriate-ops goal state))
   )
 
