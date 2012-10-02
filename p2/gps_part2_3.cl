@@ -81,12 +81,12 @@
          (difference (set-difference state2 *initial*))
         (pred (notany #'(lambda (del-item)
                   (progn 
-                          ;(format t "comparing :~a to :~a result:~a ~%action: ~a~%" del-item difference (member-equal del-item difference) (op-action op) );so its not this
-                          ;(format t "new state: ~a~%" new-state)
-                          ;(format t "done so far: ~a~%~%" state)
+                          (format t "comparing :~a to :~a result:~a ~%action: ~a~%" del-item difference (member-equal del-item difference) (op-action op) );so its not this
+                          (format t "new state: ~a~%" state2)
+                          (format t "done so far: ~a~%~%" state)
                     (member-equal del-item difference)))
                       (op-del-list op))))
-    (unless (null state2)
+    (unless (or (null state2) (null pred))
       ;; Return an updated state
       (dbg-indent :action (length goal-stack) "AppAction: ~a~%" (op-action op))
       (dbg-indent :appDiff (length goal-stack) "pred is:~a~%" pred)
@@ -263,10 +263,10 @@
                    (difference (calculateDifference state new-state))
                    (pred (notany #'(lambda (del-item)
                                     (progn 
-                                      (format t "comparing :~a to :~a result:~a ~%action: ~a~%" del-item difference (member-equal del-item difference) (op-action op) );so its not this
-                                      (format t "new state: ~a~%" new-state)
-                                      (format t "done so far: ~a~%~%" state)
-                                      (if (equal del-item '(B ON A)) (break))
+                                      ;;(format t "comparing :~a to :~a result:~a ~%action: ~a~%" del-item difference (member-equal del-item difference) (op-action op) );so its not this
+                                     ;; (format t "new state: ~a~%" new-state)
+                                     ;; (format t "done so far: ~a~%~%" state)
+                                      ;(if (equal del-item '(B ON A)) (break))
                                       (member-equal del-item difference)))
                                 (op-del-list op))))
               (if (and (not (null new-state))
