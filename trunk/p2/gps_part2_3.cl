@@ -71,15 +71,26 @@
   (member item list :test #'equal))
 
 ;;; ==============================
-
+(defun calculateDifference (state new-state)
+  (set-difference new-state *initial*))
 (defun apply-op (state goal op goal-stack)
   "Return a new, transformed state if op is applicable."
   (dbg-indent :gps-op (length goal-stack) "Apply-op: Consider => ~a" (op-action op))
-  (let ((state2 (achieve-all state (op-preconds op) 
-                             (cons goal goal-stack))))
+  (let* ((state2 (achieve-all state (op-preconds op) 
+                              (cons goal goal-stack)))
+         (difference (set-difference state2 *initial*))
+        (pred (notany #'(lambda (del-item)
+                  (progn 
+                          ;(format t "comparing :~a to :~a result:~a ~%action: ~a~%" del-item difference (member-equal del-item difference) (op-action op) );so its not this
+                          ;(format t "new state: ~a~%" new-state)
+                          ;(format t "done so far: ~a~%~%" state)
+                    (member-equal del-item difference)))
+                      (op-del-list op))))
     (unless (null state2)
       ;; Return an updated state
-      (dbg-indent :gps-op (length goal-stack) "Action: ~a" (op-action op))
+      (dbg-indent :action (length goal-stack) "AppAction: ~a~%" (op-action op))
+      (dbg-indent :appDiff (length goal-stack) "pred is:~a~%" pred)
+      (dbg-indent :op-state (length goal-stack) "state2: ~a~%~%" state2)
       (append (remove-if #'(lambda (x) 
                              (member-equal x (op-del-list op)))
                          state2)
@@ -150,6 +161,7 @@
 
 (defun GPS (state goals &optional (*ops* *ops*))
   "General Problem Solver: from state, achieve goals using *ops*."
+  (setf *initial* state)
   (find-all-if #'action-p
                (achieve-all (cons '(start) state) goals nil)))
 
@@ -240,25 +252,24 @@
         ;we need to make sure we can achieve-all the rest of the goals
         (t (checkBeforeLeaping state goal goal-stack remaining-goals))))
 
-(defun calculateDifference (state)
-  (set-difference state *initial*))
+
 (defun checkBeforeLeaping (state goal goal-stack remaining-goals)
   
-  (dbg-indent :leap (length goal) "checkBeforeLeaping: Goal => ~a" goal)
+  (dbg-indent :leap (length goal) "checkBeforeLeaping: Goal => ~a~%" goal)
   ;find all approriate operations and try to apply them all to current goal
 
   (some #'(lambda (op) 
             (let* ((new-state (apply-op state goal op goal-stack))
-                   (difference (calculateDifference new-state))
+                   (difference (calculateDifference state new-state))
                    (pred (notany #'(lambda (del-item)
                                     (progn 
-                                      (format t "comparing :~a to :~a result:~a action: ~a~%" del-item difference (member-equal del-item difference) (op-action op) );so its not this
+                                      (format t "comparing :~a to :~a result:~a ~%action: ~a~%" del-item difference (member-equal del-item difference) (op-action op) );so its not this
                                       (format t "new state: ~a~%" new-state)
-                                      (format t "done so far: ~a~%" state)
+                                      (format t "done so far: ~a~%~%" state)
+                                      (if (equal del-item '(B ON A)) (break))
                                       (member-equal del-item difference)))
                                 (op-del-list op))))
               (if (and (not (null new-state))
-                       (not (null pred))
                        (achieve-all new-state remaining-goals goal-stack))
                   new-state
                 nil)))
