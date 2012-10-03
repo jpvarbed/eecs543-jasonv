@@ -73,12 +73,16 @@
 
 (defun apply-op (state goal op goal-stack)
   "Return a new, transformed state if op is applicable."
-  (dbg-indent :gps-op (length goal-stack) "Apply-op: Consider => ~a" (op-action op))
+
+  (dbg-indent :gps (length goal-stack) "Consider: ~a" (op-action op))
+
   (let ((state2 (achieve-all state (op-preconds op) 
                              (cons goal goal-stack))))
     (unless (null state2)
       ;; Return an updated state
-      (dbg-indent :gps-op (length goal-stack) "Action: ~a" (op-action op))
+
+      (dbg-indent :gps (length goal-stack) "Action: ~a" (op-action op))
+
       (append (remove-if #'(lambda (x) 
                              (member-equal x (op-del-list op)))
                          state2)
@@ -224,9 +228,7 @@
 (defun achieve (state goal goal-stack remaining-goals)
   "A goal is achieved if it already holds,
   or if there is an appropriate op for it that is applicable."
-  (dbg-indent :achieve (length goal) "Achieve: Goal => ~a" goal)
-  (dbg-indent :gps (length state) "State: ~a" state)
-  (dbg-indent :achieve (length goal-stack) "Achieve: Goal Stack => ~a" goal-stack)
+
   
   ;if the goal is already in state, return state
   (cond ((member-equal goal state) state) 
@@ -240,14 +242,16 @@
         (t (checkBeforeLeaping state goal goal-stack remaining-goals))))
 
 
+
 (defun checkBeforeLeaping (state goal goal-stack remaining-goals)
   
-  (dbg-indent :leap (length goal) "checkBeforeLeaping: Goal => ~a" goal)
+  (dbg-indent :gps (length goal) "checkBeforeLeaping: Goal => ~a" goal)
+  
   ;find all approriate operations and try to apply them all to current goal
   (some #'(lambda (op) 
             (let ((new-state (apply-op state goal op goal-stack)))
               (if (and (not (null new-state))
-                       (achieve-all new-state remaining-goals goal-stack))
+                       (achieve-all new-state remaining-goals (cons goal goal-stack)))
                   new-state
                 nil)))
          (appropriate-ops goal state))
@@ -263,7 +267,10 @@
                  (count-if #'(lambda (precond)
                                (not (member-equal precond state)))
                            (op-preconds op)))))
-
+  ;(find-all goal *ops* :test #'appropriate-p))
+  
+  
+  
 ;;; ==============================
 
 (defun permutations (bag)
