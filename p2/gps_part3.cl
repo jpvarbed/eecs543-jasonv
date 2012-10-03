@@ -342,7 +342,24 @@
                            (op-preconds op)))))
 |#
 ;;; ==============================
+;;do match, first of rest is stuff you make sure it isnt, second is what you are looking for
+(defparameter *no-conf-rules*
+  '(
+    ((MOVE ?x from ?y to ?z)
+    (SPACE ON ?z));;gotta say where z doesnt equal x or y somehow
+    )
+  )
 
+(defun fix-op (goal state op)
+  (setf *input* (op-action op))
+  (let ((ans nil)
+        (tmp nil)
+        (possible-third nil)
+    (progn (setf ans (mapcar #' (lambda (op) 
+                                  (progn (setf tmp (rule-based-translator op *no-conf-rules*))
+                                    ))))
+      ))
+  )
 (defun get-op (goal state)
   (format t "goal is: ~a~% state is: ~a~%" goal state)
   ;;(format t "output is: ~a~%" (rule-based-translator goal *add-rules*))
