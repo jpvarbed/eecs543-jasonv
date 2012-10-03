@@ -135,7 +135,13 @@
        '(MOVE ?x FROM ?y TO ?z)
        :PRECONDS '((SPACE ON ?x) (SPACE ON ?z) (?y ON ?x))
        :ADD-LIST '((EXECUTING (MOVE ?x FROM ?y TO ?z)) (?x ON ?z) (SPACE ON ?y))
-       :DEL-LIST '((?x ON ?y) (SPACE ON ?z))))
+       :DEL-LIST '((?x ON ?y) (SPACE ON ?z)))
+      (OP  
+       '(MOVE ?x FROM ?y TO TABLE)
+       :PRECONDS '((SPACE ON ?y) (SPACE ON TABLE) (?y ON ?x))
+       :ADD-LIST '((EXECUTING (MOVE ?x FROM ?y TO TABLE)) (?x ON TABLE) (SPACE ON ?y))
+       :DEL-LIST '((?y ON ?x)))
+      )
      ((?x on ?y)
       (op 
        '(MOVE ?x FROM TABLE TO ?y)
@@ -325,6 +331,51 @@
 
 ;;; ==============================
 
+(defun get-op (goal state)
+  (format t "goal is: ~a~% state is: ~a~%" goal state)
+  (format t "output is: ~a~%" (rule-based-translator goal *add-rules*))
+  (let ((result (rule-based-translator goal *goal-rules*))
+        (gres nil)
+        (possible-ops (rule-based-translator goal *add-rules*))
+        (tmp nil)
+        (precond nil)
+        (answer nil))
+    (progn 
+      (setf tmp (sort possible-ops #'< 
+                      :key #'(lambda (g)
+                          (progn (setf precond (op-preconds (eval g))) ;;get preconds
+                            (format t "preconds is: ~a~%" precond)
+                            ;; from state find one that matches!!!where we could bind wrong
+                            (count-if #'(lambda (precond)
+                                          (if (not (member-equal precond state))
+                                              (rule-based-translator state (list precond precond))
+                                              t)
+                                               )
+                           precond)
+                            ))
+                      ))
+      (format t "tmp is : ~a~%~%" tmp)
+      )
+    )
+  )
+
+|#
+      (format t "result is:~a~%" result)
+    (if (not (null result))
+        (setf gres (member-equal (first result) state)) ;; first because its a list in a list
+      nil
+      )
+     (format t "gres is: ~a~%" gres)
+      (if (null gres)
+          (setf result (some #'(lambda (g) 
+                                 (progn (format t "trying: ~a with: ~a~%" g result)
+                                   (rule-based-translator g result)))
+                             state)))
+         (format t "second result is: ~a~%~%" result)
+#|
+;;; ==============================
+;;; ==============================
+
 (defun permutations (bag)
   "Return a list of all the permutations of the input."
   ;; If the input is nil, there is only one permutation:
@@ -340,44 +391,3 @@
                           (permutations
                             (remove e bag :count 1 :test #'eq))))
               bag)))
-
-;;; ==============================
-
-(defun get-op (goal state)
-  (format t "goal is: ~a~% state is: ~a~%" goal state)
-  (format t "output is: ~a~%" (rule-based-translator goal *add-rules*))
-  (let ((result (rule-based-translator goal *goal-rules*))
-        (gres nil)
-        (possible-ops (rule-based-translator goal *add-rules*))
-        (tmp nil)
-        (precond nil))
-    (progn 
-      (setf tmp (some #'(lambda (g)
-                          (progn (setf precond (op-preconds (eval g))) ;;get preconds
-                            ;; from state find one that matches!!!where we could bind wrong
-                            (count-if #'(lambda (precond)
-                                          (if (not (member-equal precond state))
-                                              (rule-based-translator state (list precond precond))
-                                              t)
-                                               )
-                           precond)
-                            ))
-                      possible-ops))
-      (format t "tmp is : ~a~%" tmp)
-      (format t "result is:~a~%" result)
-    (if (not (null result))
-        (setf gres (member-equal (first result) state)) ;; first because its a list in a list
-      nil
-      )
-     (format t "gres is: ~a~%" gres)
-      (if (null gres)
-          (setf result (some #'(lambda (g) 
-                                 (progn (format t "trying: ~a with: ~a~%" g result)
-                                   (rule-based-translator g result)))
-                             state)))
-         (format t "second result is: ~a~%~%" result)
-
-      )
-    )
-  )
-;;; ==============================
