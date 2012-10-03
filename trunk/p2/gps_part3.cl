@@ -322,18 +322,30 @@
 (defun appropriate-ops (goal state)
   "Return a list of appropriate operators, 
   sorted by the number of unfulfilled preconditions."
-  (get-op goal state)
-  (sort (copy-list (find-all goal *ops* :test #'appropriate-p)) #'<
+  (let ((gops nil)
+        (nops nil))
+    (progn (setf gops (get-op goal state))
+      (setf nops (sort (copy-list (find-all goal *ops* :test #'appropriate-p)) #'<
         :key #'(lambda (op) 
                  (count-if #'(lambda (precond)
                                (not (member-equal precond state)))
                            (op-preconds op)))))
+      (format t "gops is: ~a~% nops is: ~a~%" gops nops)
+      nops
+      ))
 
+  )
+  #|(sort (copy-list (find-all goal *ops* :test #'appropriate-p)) #'<
+        :key #'(lambda (op) 
+                 (count-if #'(lambda (precond)
+                               (not (member-equal precond state)))
+                           (op-preconds op)))))
+|#
 ;;; ==============================
 
 (defun get-op (goal state)
   (format t "goal is: ~a~% state is: ~a~%" goal state)
-  (format t "output is: ~a~%" (rule-based-translator goal *add-rules*))
+  ;;(format t "output is: ~a~%" (rule-based-translator goal *add-rules*))
   (let ((result (rule-based-translator goal *goal-rules*))
         (gres nil)
         (possible-ops (rule-based-translator goal *add-rules*))
@@ -341,6 +353,7 @@
         (precond nil)
         (answer nil))
     (progn 
+      (format t "result is:~a~%" result)
       (setf tmp (sort possible-ops #'< 
                       :key #'(lambda (g)
                           (progn (setf precond (op-preconds (eval g))) ;;get preconds
@@ -354,12 +367,15 @@
                            precond)
                             ))
                       ))
-      (format t "tmp is : ~a~%~%" tmp)
+     ;; (format t "tmp is : ~a~%" tmp)
+      (setf answer (mapcar #' (lambda (g) (eval g)) tmp))
+      (format t "answer is : ~a~%~%" answer)
+      answer
       )
     )
   )
 
-|#
+#|
       (format t "result is:~a~%" result)
     (if (not (null result))
         (setf gres (member-equal (first result) state)) ;; first because its a list in a list
@@ -372,7 +388,7 @@
                                    (rule-based-translator g result)))
                              state)))
          (format t "second result is: ~a~%~%" result)
-#|
+|#
 ;;; ==============================
 ;;; ==============================
 
