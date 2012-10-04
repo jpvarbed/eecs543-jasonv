@@ -156,6 +156,40 @@
        )
    )
   )
+(defparameter *adder-rules*
+  '(      
+     ((?x on table)
+      (OP  
+       '(MOVE ?x FROM ?y TO TABLE)
+       :PRECONDS '((SPACE ON ?y) (SPACE ON TABLE) (?y ON ?x))
+       :ADD-LIST '((EXECUTING (MOVE ?x FROM ?y TO TABLE)) (?x ON TABLE) (SPACE ON ?y))
+       :DEL-LIST '((?y ON ?x))))
+     ((space on ?x)
+      (OP 
+       '(MOVE ?y FROM ?x TO TABLE)
+       :PRECONDS '((SPACE ON TABLE) (SPACE ON ?x))
+       :ADD-LIST '((EXECUTING (MOVE ?y FROM ?x TO table)) (?y ON table) (SPACE ON ?x))
+       :DEL-LIST '((?y ON ?x)))
+      (OP  
+       '(MOVE ?y FROM ?x TO ?z)
+       :PRECONDS '((SPACE ON ?z) (SPACE ON TABLE) (?y ON ?x))
+       :ADD-LIST '((EXECUTING (MOVE ?y FROM ?x TO ?z)) (?y ON ?z) (SPACE ON ?x))
+       :DEL-LIST '((?y ON ?x) (space on ?z)))
+      )
+     ((?x on ?y)
+      (op 
+       '(MOVE ?x FROM TABLE TO ?y)
+       :PRECONDS '((SPACE ON ?x) (SPACE ON ?y) (?y ON TABLE))
+       :ADD-LIST '((EXECUTING (MOVE ?x FROM TABLE TO ?y)) (?x ON ?y))
+       :DEL-LIST '((?x ON TABLE) (SPACE ON ?y)))
+      (OP 
+       '(MOVE ?x FROM ?y TO ?z)
+       :PRECONDS '((SPACE ON ?x) (SPACE ON ?z) (?y ON ?x))
+       :ADD-LIST '((EXECUTING (MOVE ?x FROM ?y TO ?z)) (?x ON ?z) (SPACE ON ?y))
+       :DEL-LIST '((?x ON ?y) (SPACE ON ?z)))
+       )
+   )
+  )
 ;; if goal is ?x on table then op is move ?x from ?y to table
 
 ;; if goal (space on ?y) either to table or to ?z
@@ -323,7 +357,9 @@
   "Return a list of appropriate operators, 
   sorted by the number of unfulfilled preconditions."
   (let ((gops nil)
-        (nops nil))
+        (nops nil)
+        (fixed nil)
+        (ret nil))
     (progn (setf gops (get-op goal state))
       (setf nops (sort (copy-list (find-all goal *ops* :test #'appropriate-p)) #'<
         :key #'(lambda (op) 
@@ -331,81 +367,85 @@
                                (not (member-equal precond state)))
                            (op-preconds op)))))
       (format t "gops is: ~a~% nops is: ~a~%" gops nops)
-      nops
+
+      gops
       ))
 
   )
-  #|(sort (copy-list (find-all goal *ops* :test #'appropriate-p)) #'<
-        :key #'(lambda (op) 
-                 (count-if #'(lambda (precond)
-                               (not (member-equal precond state)))
-                           (op-preconds op)))))
-|#
+
 ;;; ==============================
 ;;do match, first of rest is stuff you make sure it isnt, second is what you are looking for
-(defparameter *no-conf-rules*
-  '(
-    ((MOVE ?x from ?y to ?z)
-    (SPACE ON ?z));;gotta say where z doesnt equal x or y somehow
+(defun match-op-state (goal state op)
+  (let ((possible-ops nil))
+          (setf possible-ops 
+                    (progn (if (every #'(lambda (s) 
+                                          (member-equal s state)) (op-preconds op))
+                      op ;;we don't have to do anything, it is a possible op
+                      (again goal state op);try to match
+                             )))
     )
   )
-
-(defun fix-op (goal state op)
-  (setf *input* (op-action op))
-  (let ((ans nil)
-        (tmp nil)
-        (possible-third nil)
-    (progn (setf ans (mapcar #' (lambda (op) 
-                                  (progn (setf tmp (rule-based-translator op *no-conf-rules*))
-                                    ))))
-      ))
+(defun again (goal state op)
+    (let ((possible-ops nil))
+          (setf possible-ops 
+                    (progn (mapcar #'(lambda (s) 
+                                          (if (not (member-equal s state))
+                                              (replace-op-state goal state s op))) (op-preconds op))
+    )))
   )
+(defparameter *replace-rules*
+  '(
+    ((SPACE on ?x)
+     (space on ?x)(space on ?x))
+    ;;((?y on ?x)
+    ;;((?y on ?x (?if (variable-p ?x) (?if (not (equal ?y ?x)))))))
+    ((?y on ?x)
+     (?y on ?x))
+    )
+  )
+(defun replace-op-state (goal state precond op)
+  (let ((tmp (rule-based-translator precond *replace-rules*)) 
+        (binding nil)
+        (tmp2 nil))
+    (progn (format t "precond is ~a~% tmp is ~a~%" precond tmp)
+      (cond ((equal precond '(space on ?Z)) 
+             (progn (some #'(lambda (s) (progn (setf tmp2 (rule-based-translator s (list (list precond precond))))
+                                          (if (not (null tmp2))
+                                              (setf binding tmp2)
+                                          ))) state) binding))
+            (tmp (progn (some #'(lambda (s) (progn (setf tmp2 (rule-based-translator s tmp))
+                                              (if (not (null tmp2))
+                                                  (setf binding tmp2)))) state) binding))
+               (t nil))
+      (format t "binding is:~a~%" binding)
+      (if (not (null binding))
+          '() ;;should replace op here somehow
+        )
+    ))
+)
 (defun get-op (goal state)
   (format t "goal is: ~a~% state is: ~a~%" goal state)
-  ;;(format t "output is: ~a~%" (rule-based-translator goal *add-rules*))
-  (let ((result (rule-based-translator goal *goal-rules*))
-        (gres nil)
-        (possible-ops (rule-based-translator goal *add-rules*))
-        (tmp nil)
-        (precond nil)
-        (answer nil))
+
+  (let ((result (rule-based-translator goal *adder-rules*))
+        (possible-ops nil))
     (progn 
+      
+      (setf result (mapcar #'(lambda (g) (eval g)) result))
       (format t "result is:~a~%" result)
-      (setf tmp (sort possible-ops #'< 
-                      :key #'(lambda (g)
-                          (progn (setf precond (op-preconds (eval g))) ;;get preconds
-                            (format t "preconds is: ~a~%" precond)
-                            ;; from state find one that matches!!!where we could bind wrong
-                            (count-if #'(lambda (precond)
-                                          (if (not (member-equal precond state))
-                                              (rule-based-translator state (list precond precond))
-                                              t)
-                                               )
-                           precond)
-                            ))
+      ;;now try to fil the preconds
+      (setf possible-ops 
+        (mapcar #'(lambda (op) 
+                    (if (match-op-state goal state op)
+                        op
                       ))
-     ;; (format t "tmp is : ~a~%" tmp)
-      (setf answer (mapcar #' (lambda (g) (eval g)) tmp))
-      (format t "answer is : ~a~%~%" answer)
-      answer
+          result))
+        
+      (format t "possible-ops: is : ~a~%" possible-ops)
+      possible-ops
       )
     )
   )
 
-#|
-      (format t "result is:~a~%" result)
-    (if (not (null result))
-        (setf gres (member-equal (first result) state)) ;; first because its a list in a list
-      nil
-      )
-     (format t "gres is: ~a~%" gres)
-      (if (null gres)
-          (setf result (some #'(lambda (g) 
-                                 (progn (format t "trying: ~a with: ~a~%" g result)
-                                   (rule-based-translator g result)))
-                             state)))
-         (format t "second result is: ~a~%~%" result)
-|#
 ;;; ==============================
 ;;; ==============================
 
