@@ -92,7 +92,6 @@
 
 (defun appropriate-p (goal op)
   "An op is appropriate to a goal if it is in its add list."
-
   (member-equal goal (op-add-list op)))
 
 ;;; ==============================
@@ -211,6 +210,7 @@
   (some #'(lambda (goals) (achieve-each state goals goal-stack))
         (orderings goals)))
 
+
 (defun achieve-each (state goals goal-stack)
   "Achieve each goal, and make sure they still hold at the end."
   
@@ -250,15 +250,12 @@
 
 
 (defun checkBeforeLeaping (state goal goal-stack remaining-goals)
- 
-  ;(dbg-indent :gps (length goal) "checkBeforeLeaping: Goal => ~a" goal)
-  
-  
-    ;find all approriate operations and try to apply them all to current goal
+   
+  ;find all approriate operations and try to apply them all to current goal
   (some #'(lambda (op) 
             (let ((new-state (apply-op state goal op goal-stack)))
               (if (and (not (null new-state))
-                       (achieve-all new-state remaining-goals goal-stack))
+                       (achieve-all new-state remaining-goals (cons goal goal-stack)))
                   new-state
                 nil)))
          (appropriate-ops goal state))
@@ -274,8 +271,7 @@
                  (count-if #'(lambda (precond)
                                (not (member-equal precond state)))
                            (op-preconds op)))))
-  ; (find-all goal *ops* :test #'appropriate-p))
-  
+    
 
 ;;; ==============================
 
@@ -302,25 +298,25 @@
   (list
    (make-op :action '(taxi-son-to-school)
             :preconds '((son-at-home have-money))
-            :add-list '((son-at-school))
+            :add-list '((executing (taxi-son-to-school)) (son-at-school))
             :del-list '((son-at-home have-money)))
     (make-op :action '(drive-son-to-school)
          :preconds '((son-at-home) (car-works))
-         :add-list '((son-at-school))
+         :add-list '((executing (drive-son-to-school)) (son-at-school))
          :del-list '((son-at-home)))
     (make-op :action '(shop-installs-battery)
          :preconds '((car-needs-battery) (shop-knows-problem) (shop-has-money))
-         :add-list '((car-works)))
+         :add-list '((executing (shop-installs-battery)) (car-works)))
     (make-op :action '(tell-shop-problem)
          :preconds '((in-communication-with-shop))
-         :add-list '((shop-knows-problem)))
+         :add-list '((executing (tell-shop-problem)) (shop-knows-problem)))
     (make-op :action '(telephone-shop)
          :preconds '((know-phone-number))
-         :add-list '((in-communication-with-shop)))
+         :add-list '((executing (telephone-shop)) (in-communication-with-shop)))
     (make-op :action '(look-up-number)
          :preconds '((have-phone-book))
-         :add-list '((know-phone-number)))
+         :add-list '((executing (look-up-number)) (know-phone-number)))
     (make-op :action '(give-shop-money)
          :preconds '((have-money))
-         :add-list '((shop-has-money))
+         :add-list '((executing (give-shop-money)) (shop-has-money))
              :del-list '((have-money)))))
