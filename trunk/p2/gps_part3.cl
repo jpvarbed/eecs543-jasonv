@@ -361,11 +361,11 @@
         (fixed nil)
         (ret nil))
     (progn (setf gops (get-op goal state))
-      (setf nops (sort (copy-list (find-all goal *ops* :test #'appropriate-p)) #'<
-        :key #'(lambda (op) 
-                 (count-if #'(lambda (precond)
-                               (not (member-equal precond state)))
-                           (op-preconds op)))))
+      ;(setf nops (sort (copy-list (find-all goal *ops* :test #'appropriate-p)) #'<
+      ;  :key #'(lambda (op) 
+                 ;(count-if #'(lambda (precond)
+                   ;            (not (member-equal precond state)))
+                      ;     (op-preconds op)))))
       (format t "gops is: ~a~% nops is: ~a~%" gops nops)
 
       gops
