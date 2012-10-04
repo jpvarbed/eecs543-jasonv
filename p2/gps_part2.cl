@@ -1,8 +1,56 @@
-;;; -*- Mode: Lisp; Syntax: Common-Lisp; -*-
-;;; Code from Paradigms of Artificial Intelligence Programming
-;;; Copyright (c) 1991 Peter Norvig
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; EECS543 Fall 2012
+; Programming Assignment 2
+;
+; Student Name: Jason Varbedian, Dan Jonik
+; uniqname: jpvarbed, djonik
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;; File gps.lisp: Final version of GPS
+#| Task 2 evaluation follows:
+
+DISCUSSION:
+
+To add goal protection functionality to our GPS program, we kept a list of goals
+that had been achieved through calls to the achieve function (the list was maintained
+in achieve-each). By maintaining the list in achieve-each, we made sure that different
+search branches did not interfere with each other's protected goals list. Each list would
+be used by a single search path, and would be erased as soon as its call to achieve-each
+returned. The initial list of protected goals for all top level search paths was an empty
+list. 
+
+The actual protected goal violation check occurred in our helper function (essentially inside
+of the achieve function), where every operation's delete list would be compared to goals on our
+protected goals list. If there was any overlap, the operation would be instantly disregarded,
+and our search would continue with the next op.
+
+
+Below is an excerpt of our output when running the following:
+
+(GPS '((SON-AT-HOME) (HAVE-MONEY)) '((SON-AT-SCHOOL) (HAVE-MONEY)) *SCHOOL-OPS*)
+
+>> Goal: (HAVE-MONEY)
+   Goal: (SON-AT-SCHOOL)
+   Consider: (TAXI-SON-TO-SCHOOL)
+   Terminating search tree.
+   Consider: (DRIVE-SON-TO-SCHOOL)
+        Goal: (SON-AT-HOME)
+        ....
+
+When we start by achieving (HAVE-MONEY), which we can do trivially, our program then attempts to
+achieve the goal (SON-AT-SCHOOL). The first operation it considers is (TAXI-SOON-TO-SCHOOL), which 
+will violate the protected goal (HAVE-MONEY) at this point. The program recognizes this, prints the
+terminating search message, and goes to the next operation, (DRIVE-SON-TO-SCHOOL), to again attempt
+to achieve (SOON-AT-SCHOOL).
+
+
+The obvious strength of this method is that time is saved from avoiding destructive search paths. 
+We did, however, discover that we were using up considerably more memory while running our task 2
+code, in relation to task 1. We were unsure of the exact cause of this phenomenon. 
+
+|#
+
+
+
 
 (requires "gps1")
 
@@ -35,15 +83,14 @@
 ;;; ==============================
 
 (defvar *ops* nil "A list of available operators.")
-(defparameter *proc-goals* nil "A list of protected goals.")
 
 (defstruct op "An operation"
   (action nil) (preconds nil) (add-list nil) (del-list nil))
 
 (defun GPS (state goals &optional (*ops* *ops*))
-  (print "running task 2 version...")
+
   "General Problem Solver: from state, achieve goals using *ops*."
-  (remove-if #'atom (achieve-all (cons '(start) state) goals nil)))
+  (remove-if #'atom (achieve-all (cons '(start) state) goals nil nil)))
 
 ;;; ==============================
 
@@ -60,7 +107,7 @@
 (defun achieve (state goal goal-stack remaining-goals)
   "A goal is achieved if it already holds,
   or if there is an appropriate op for it that is applicable."
-  (dbg-indent :gps (length goal-stack) "Goal: ~a" goal)
+  (dbg-indent :gps (length goal) "Goal: ~a" goal)
   (cond ((member-equal goal state) state)
         ((member-equal goal goal-stack) nil)
         (t (some #'(lambda (op) (apply-op state goal op goal-stack))
@@ -73,18 +120,7 @@
 
 ;;; ==============================
 
-(defun apply-op (state goal op goal-stack)
-  "Return a new, transformed state if op is applicable."
-  (dbg-indent :gps (length goal-stack) "Apply-op: Consider => ~a" (op-action op))
-  (let ((state2 (achieve-all state (op-preconds op) 
-                             (cons goal goal-stack))))
-    (unless (null state2)
-      ;; Return an updated state
-      (dbg-indent :action (length goal-stack) "Action: ~a" (op-action op))
-      (append (remove-if #'(lambda (x) 
-                             (member-equal x (op-del-list op)))
-                         state2)
-              (op-add-list op)))))
+
 
 (defun appropriate-p (goal op)
   "An op is appropriate to a goal if it is in its add list."
@@ -151,10 +187,10 @@
 ;;; ==============================
 
 (defun GPS (state goals &optional (*ops* *ops*))
-  (print "running task 2 version...")
+
   "General Problem Solver: from state, achieve goals using *ops*."
   (find-all-if #'action-p
-               (achieve-all (cons '(start) state) goals nil)))
+               (achieve-all (cons '(start) state) goals nil nil)))
 
 (defun action-p (x)
   "Is x something that is (start) or (executing ...)?"
@@ -203,21 +239,29 @@
 
 ;;; ==============================
 
-(defun achieve-all (state goals goal-stack)
+(defun achieve-all (state goals goal-stack proc-goals)
   "Achieve each goal, trying several orderings."
-  (dbg-indent :proc-end (length *proc-goals*) "~&Proc-goals: ~a~%" *proc-goals*)
-  (some #'(lambda (goals) (achieve-each state goals goal-stack))
+  (some #'(lambda (goals) (achieve-each state goals goal-stack proc-goals))
         (orderings goals)))
 
-(defun achieve-each (state goals goal-stack)
+
+(defun achieve-each (state goals goal-stack proc-goals)
   "Achieve each goal, and make sure they still hold at the end."
   (let ((current-state state))
     (if (and (every #'(lambda (g)
                         (setf current-state
-                              (achieve current-state g goal-stack (set-difference goals g))))
+                          (achieve current-state g goal-stack (set-difference goals g) proc-goals))
+                        
+                        ;if achieve returned a non-null state, we have achieved a new goal, so let's 
+                        ;protect it
+                        (if (not (null current-state))
+                            (setf proc-goals (cons g proc-goals)))
+                        
+                        current-state)
                     goals)
              (subsetp goals current-state :test #'equal))
         current-state)))
+
 
 (defun orderings (l) 
   (if (> (length l) 1)
@@ -226,40 +270,53 @@
 
 ;;; ==============================
 
-(defun achieve (state goal goal-stack remaining-goals)
+
+(defun apply-op (state goal op goal-stack proc-goals)
+  "Return a new, transformed state if op is applicable."
+  ;(dbg-indent :gps (length goal-stack) "Consider: ~a" (op-action op))
+  ;(dbg-indent :gps (length proc-goals) "proc-goals: ~a" proc-goals)
+
+  (let ((state2 (achieve-all state (op-preconds op) 
+                             (cons goal goal-stack) (cons goal proc-goals))))
+
+    (unless (null state2)
+      ;; Return an updated state
+      ;(dbg-indent :gps (length goal-stack) "Action: ~a" (op-action op))
+      (append (remove-if #'(lambda (x) 
+                             (member-equal x (op-del-list op)))
+                         state2)
+              (op-add-list op)))))
+
+
+(defun achieve (state goal goal-stack remaining-goals proc-goals)
   "A goal is achieved if it already holds,
   or if there is an appropriate op for it that is applicable."
-  (dbg-indent :achieve (length goal) "Achieve: Goal => ~a" goal)
-  (dbg-indent :gps (length state) "State: ~a" state)
-  (dbg-indent :achieve (length state) "Achieve: State => ~a" state)
-  (dbg-indent :proc (length *proc-goals*) "~&Proc-goals: ~a~%" *proc-goals*)
-  
-  ;if the goal is already in state, return state
-  (let ((new-state (cond ((member-equal goal state) state) 
-                         ((member-equal goal goal-stack) nil)
-                         (t (checkBeforeLeaping state goal goal-stack remaining-goals)))))
-    ;(format t "~&new-state: ~a" new-state)
-    new-state))
+  (dbg-indent :gps (length goal-stack) "Goal: ~a" goal)
+
+  (cond ((member-equal goal state) state) 
+        ((member-equal goal goal-stack) nil)
+        (t (checkBeforeLeaping state goal goal-stack remaining-goals proc-goals))))
 
 
-(defun checkBeforeLeaping (state goal goal-stack remaining-goals)
-  
-  (dbg-indent :leap (length goal) "checkBeforeLeaping: Goal => ~a" goal)
+(defun checkBeforeLeaping (state goal goal-stack remaining-goals proc-goals)
   
   ;find all approriate operations and try to apply them all to current goal
   (some #'(lambda (op) 
-            (let ((new-state (apply-op state goal op goal-stack))
-                  (pred (notany #'(lambda (del-item)
-                                     (member-equal del-item *proc-goals*))
-                                (op-del-list op))))
-             
-              (if (and (not (null new-state))
-                       (not (null pred))
-                       (achieve-all new-state remaining-goals goal-stack))
-                  (progn
-                    (setf *proc-goals* (append *proc-goals* (rest (op-add-list op))))
-                    new-state)
-                nil)))
+            
+            (dbg-indent :gps (length goal-stack) "Consider: ~a" (op-action op))
+            
+            ;make sure op will not clobber any of our protected goals
+            (if (some #'(lambda (del-item) (member-equal del-item proc-goals))
+                      (op-del-list op))
+                (progn
+                  (dbg-indent :gps (length goal-stack) "Terminating search tree." '())
+                  nil)
+              
+              (let ((new-state (apply-op state goal op (cons goal goal-stack) proc-goals)))
+                (if (and (not (null new-state))
+                       (achieve-all new-state remaining-goals goal-stack (cons goal proc-goals)))
+                    new-state
+                nil))))
          (appropriate-ops goal state)))
 
 
@@ -293,3 +350,30 @@
 
 ;;; ==============================
 
+
+(defparameter *school-ops*
+  (list
+   (make-op :action '(taxi-son-to-school)
+            :preconds '((son-at-home) (have-money))
+            :add-list '((executing (taxi-son-to-school)) (son-at-school))
+            :del-list '((son-at-home) (have-money)))
+    (make-op :action '(drive-son-to-school)
+         :preconds '((son-at-home) (car-works))
+         :add-list '((executing (drive-son-to-school)) (son-at-school))
+         :del-list '((son-at-home)))
+    (make-op :action '(shop-installs-battery)
+         :preconds '((car-needs-battery) (shop-knows-problem) (shop-has-money))
+         :add-list '((executing (shop-installs-battery)) (car-works)))
+    (make-op :action '(tell-shop-problem)
+         :preconds '((in-communication-with-shop))
+         :add-list '((executing (tell-shop-problem)) (shop-knows-problem)))
+    (make-op :action '(telephone-shop)
+         :preconds '((know-phone-number))
+         :add-list '((executing (telephone-shop)) (in-communication-with-shop)))
+    (make-op :action '(look-up-number)
+         :preconds '((have-phone-book))
+         :add-list '((executing (look-up-number)) (know-phone-number)))
+    (make-op :action '(give-shop-money)
+         :preconds '((have-money))
+         :add-list '((executing (give-shop-money)) (shop-has-money))
+             :del-list '((have-money)))))
