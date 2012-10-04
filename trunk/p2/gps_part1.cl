@@ -1,3 +1,11 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; EECS543 Fall 2012
+; Programming Assignment 2
+;
+; Student Names: Jason Varbedian, Dan Jonik
+; uniqname: jpvarbed, djonik
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 #| Task 1 evaluation follows:
 
 DISCUSSION:
