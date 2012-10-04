@@ -1,8 +1,30 @@
-;;; -*- Mode: Lisp; Syntax: Common-Lisp; -*-
-;;; Code from Paradigms of Artificial Intelligence Programming
-;;; Copyright (c) 1991 Peter Norvig
+#| Task 1 evaluation follows:
 
-;;;; File gps.lisp: Final version of GPS
+DISCUSSION:
+
+In order to implement "not looking after you don't leap problem", we wrote a helper
+function that was responsible for 
+
+a) checking to make sure that a given operation could be successfully applied to 
+   the current state, and
+b) checking to make sure that it was possible to achieve-all of the remaining goals
+   on the updated state provided by step (a).
+
+We would essentially ignore any operation that was not able to satisfy both conditions
+inside of our achieve function. 
+
+We were then able to solve the Sussman Anomaly:
+
+CG-USER(106): (gps sstart sgoal)
+((START) (EXECUTING (MOVE C FROM A TO TABLE)) (EXECUTING (MOVE B FROM TABLE TO A))
+ (EXECUTING (MOVE B FROM A TO C)) (EXECUTING (MOVE A FROM TABLE TO B)))
+
+|#
+
+
+
+
+
 
 (requires "gps1")
 
@@ -255,11 +277,10 @@
   (some #'(lambda (op) 
             (let ((new-state (apply-op state goal op goal-stack)))
               (if (and (not (null new-state))
-                       (achieve-all new-state remaining-goals (cons goal goal-stack)))
+                       (achieve-all new-state remaining-goals goal-stack))
                   new-state
                 nil)))
-         (appropriate-ops goal state))
-  )
+         (appropriate-ops goal state)))
 
 
 ;gives us a list of which operations 
@@ -294,29 +315,3 @@
 ;;; ==============================
 
 
-(defparameter *school-ops*
-  (list
-   (make-op :action '(taxi-son-to-school)
-            :preconds '((son-at-home have-money))
-            :add-list '((executing (taxi-son-to-school)) (son-at-school))
-            :del-list '((son-at-home have-money)))
-    (make-op :action '(drive-son-to-school)
-         :preconds '((son-at-home) (car-works))
-         :add-list '((executing (drive-son-to-school)) (son-at-school))
-         :del-list '((son-at-home)))
-    (make-op :action '(shop-installs-battery)
-         :preconds '((car-needs-battery) (shop-knows-problem) (shop-has-money))
-         :add-list '((executing (shop-installs-battery)) (car-works)))
-    (make-op :action '(tell-shop-problem)
-         :preconds '((in-communication-with-shop))
-         :add-list '((executing (tell-shop-problem)) (shop-knows-problem)))
-    (make-op :action '(telephone-shop)
-         :preconds '((know-phone-number))
-         :add-list '((executing (telephone-shop)) (in-communication-with-shop)))
-    (make-op :action '(look-up-number)
-         :preconds '((have-phone-book))
-         :add-list '((executing (look-up-number)) (know-phone-number)))
-    (make-op :action '(give-shop-money)
-         :preconds '((have-money))
-         :add-list '((executing (give-shop-money)) (shop-has-money))
-             :del-list '((have-money)))))
