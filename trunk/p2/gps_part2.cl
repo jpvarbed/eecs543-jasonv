@@ -312,7 +312,7 @@ code, in relation to task 1. We were unsure of the exact cause of this phenomeno
                   (dbg-indent :gps (length goal-stack) "Terminating search tree." '())
                   nil)
               
-              (let ((new-state (apply-op state goal op (cons goal goal-stack) proc-goals)))
+              (let ((new-state (apply-op state goal op goal proc-goals)))
                 (if (and (not (null new-state))
                        (achieve-all new-state remaining-goals goal-stack (cons goal proc-goals)))
                     new-state
@@ -350,30 +350,3 @@ code, in relation to task 1. We were unsure of the exact cause of this phenomeno
 
 ;;; ==============================
 
-
-(defparameter *school-ops*
-  (list
-   (make-op :action '(taxi-son-to-school)
-            :preconds '((son-at-home) (have-money))
-            :add-list '((executing (taxi-son-to-school)) (son-at-school))
-            :del-list '((son-at-home) (have-money)))
-    (make-op :action '(drive-son-to-school)
-         :preconds '((son-at-home) (car-works))
-         :add-list '((executing (drive-son-to-school)) (son-at-school))
-         :del-list '((son-at-home)))
-    (make-op :action '(shop-installs-battery)
-         :preconds '((car-needs-battery) (shop-knows-problem) (shop-has-money))
-         :add-list '((executing (shop-installs-battery)) (car-works)))
-    (make-op :action '(tell-shop-problem)
-         :preconds '((in-communication-with-shop))
-         :add-list '((executing (tell-shop-problem)) (shop-knows-problem)))
-    (make-op :action '(telephone-shop)
-         :preconds '((know-phone-number))
-         :add-list '((executing (telephone-shop)) (in-communication-with-shop)))
-    (make-op :action '(look-up-number)
-         :preconds '((have-phone-book))
-         :add-list '((executing (look-up-number)) (know-phone-number)))
-    (make-op :action '(give-shop-money)
-         :preconds '((have-money))
-         :add-list '((executing (give-shop-money)) (shop-has-money))
-             :del-list '((have-money)))))
