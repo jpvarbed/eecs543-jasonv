@@ -21,10 +21,28 @@
   (neighbors nil :type list)) ;list of all cells considered neighbors
 
 
-(defun impossible-p () )
+(defun impossible-cell-p (cell)
+  "A cell is impossible if its domain has no values."
+  (null (cell-domain cell)))
 
+(defun ambiguous-cell-p (cell)
+  "A cell is ambiguous if its domain has more than 2 values."
+  (> (length (cell-domain cell)) 1))
 
-(defun ambiguous-p () )
+(defun impossible-puzzle-p (puzzle)
+  "A puzzle is impossible if one or more of its cells have no
+   possible solutions."
+  
+  (some #'impossible-cell-p (enumerate-cells puzzle)))
+
+(defun enumerate-cells (puzzle)
+  "Creates and returns a list from the 2D array of cells in puzzle."
+
+  (let ((cell-list '()))
+    (loop for x from 0 to (- (puzzle-size puzzle) 1) do
+          (loop for y from 0 to (- (puzzle-size puzzle) 1) do
+                (setf cell-list (cons (aref (puzzle-cells puzzle) x y) cell-list))))
+    cell-list))
 
 
 (defun create-puzzle (dimension &optional (tuples nil))
@@ -34,7 +52,7 @@
   (let ((puzzle (make-puzzle :cells (make-array `(,dimension ,dimension))
                              :size dimension
                              :constraints tuples)))
-  
+
     (loop for x from 1 to dimension do
           (loop for y from 1 to dimension do
                 (setf (aref (puzzle-cells puzzle) (- x 1) (- y 1))
@@ -92,9 +110,21 @@
   )
 
 
-
-
-
+;(defun print-labelings (diagram)
+;  "Label the diagram by propagating constraints and then
+;  searching for solutions if necessary.  Print results."
+;  (show-diagram diagram "~&The initial diagram is:")
+;  (every #'propagate-constraints (diagram-vertexes diagram))
+;  (show-diagram diagram
+;                "~2&After constraint propagation the diagram is:")
+;  (let* ((solutions (if (impossible-diagram-p diagram)
+;                        nil
+;                        (search-solutions diagram)))
+;         (n (length solutions)))
+;    (unless (= n 1)
+;      (format t "~2&There are ~r solution~:p:" n)
+;      (mapc #'show-diagram solutions)))
+;  (values))
 
 
 (defun show-puzzle (puzzle &optional (stream t))
@@ -199,6 +229,11 @@
         (format stream "-"))
   (format stream "~%"))
 
+
+(defun check-puzzle (puzzle) 
+  "TODO: do some error checking on a puzzle to make sure it is correctly formed.")
+  
+  )
 
 
 (defun genList (max)
