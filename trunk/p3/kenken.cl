@@ -338,14 +338,22 @@
    (let* ((new (make-diagram 
                 :cells (mapcar #'copy-cells
                          (puzzle-cells puzzle))
-                :constraints puzzle-constraints puzzle
-                :size puzzle-size puzzle)))
+                :size puzzle-size puzzle))
+               (tmp nil))
      ;; Put in the neighbors for each cell
-     (progn
        ;;set constraints in each cell
        ;;constraints overall
        ;;Neighbors is good
-    (dolist (c (puzzle-cells new))
+       (dolist (c (puzzle-cells new))
+         (progn
+           (setf tmp
+             (make-constraint :outcome (constraint-outcome (cell-constraint c))
+                              :operator (constraint-operation (cell-operation c))
+                              :region-cells (mapcar #'(lambda (regionc) 
+                                                        (cell-at regionc-x regionc-y new))
+                                              (constraint-region-cells (cell-region-cells c)))))
+           (setf (cell-constraint c) tmp)
+           (setf (puzzle-constraints new) (cons tmp (puzzle-constraints new)))
       (setf (cell-neighbors c)
             (mapcar #'(lambda (neighbor) 
                         (cell-at neighbor-x neighbor-y new))
