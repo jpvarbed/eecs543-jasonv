@@ -332,6 +332,11 @@
   
   )
 
+(defun make-copy-puzzle (puzzle) 
+  "Returns a copy of the puzzle"
+  
+  )
+
 
 (defun genList (max)
   "Builds a list of the numbers 1 to max"
