@@ -334,7 +334,23 @@
 
 (defun make-copy-puzzle (puzzle) 
   "Returns a copy of the puzzle"
-  
+  ;;need to figure out constraints
+   (let* ((new (make-diagram 
+                :cells (mapcar #'copy-cells
+                         (puzzle-cells puzzle))
+                :constraints puzzle-constraints puzzle
+                :size puzzle-size puzzle)))
+     ;; Put in the neighbors for each cell
+     (progn
+       ;;set constraints in each cell
+       ;;constraints overall
+       ;;Neighbors is good
+    (dolist (c (puzzle-cells new))
+      (setf (cell-neighbors c)
+            (mapcar #'(lambda (neighbor) 
+                        (cell-at neighbor-x neighbor-y new))
+                    (cell-neighbors c)))))
+    new)
   )
 
 
