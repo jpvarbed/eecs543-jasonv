@@ -365,8 +365,16 @@
 
 (defun check-puzzle (puzzle) 
   "TODO: do some error checking on a puzzle to make sure it is correctly formed."
-  
-  )
+  ;;check if each cell is in a constraint
+  ;;check that no cell is in two constraints
+  ;;true if checked out to be ok
+  (let ((all-constraints (mapcan #'(lambda (c) (copy-list (constraint-region-cells c))) (puzzle-constraints puzzle)))
+        (counter nil))
+    (every #'(lambda (c)
+               (setf counter (count (list (cell-x c) (cell-y c)) all-constraints :test #'equal))
+               (equal counter 1)) (enumerate-cells puzzle))
+   
+  ))
 
 
 (defun make-copy-puzzle (puzzle) 
@@ -402,7 +410,8 @@
     new)
   )
 
-
+(defun mrv-ambiguous
+    )
 (defun first-ambiguous (puzzle)
   "Returns the first cell with an amibigous value."
   (some #'ambiguous-cell-p (enumerate-cells puzzle)))
