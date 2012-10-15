@@ -148,20 +148,26 @@
   (values))
 
 
-(defun search-solutions (puzzle &optional (func-call first-ambiguous))  
+(defun search-solutions (puzzle &key (func-call 'first-ambiguous))  
   
-  (let ((c (find-if #'func-call puzzle)))
-    (if (null c)
+  (let* ((c (funcall func-call puzzle))
+         (cell-c (cell-at puzzle (first c) (first (rest c)))))
+    (progn (format t "cell-c ~a~%" cell-c)
+    (if (null cell-c)
         (list puzzle)
       (mapcan #'(lambda (possible-val)
                   (1+ num-guesses)
+                  (format t "possible-val is ~a~%" possible-val)
                   (let* ((puzzle2 (make-copy-puzzle puzzle))
-                         (c2 (cell-at puzzle2 (cell-x c) (cell-y c))))
+                         (c2 (cell-at puzzle2 (cell-x cell-c) (cell-y cell-c))))
+                    (progn
+                      (format t "puzzle copy is ~a~%" puzzle2)
+                      (break)
                     (setf (cell-domain c2) (list possible-val))
                     (if (propogate-constraints c2 puzzle2)
                         (search-solutions puzzle2)
-                      nil)))
-        (cell-domain c)))))
+                      nil))))
+        (cell-domain cell-c))))))
 
 
 (defun propogate-constraints (cell puzzle)
@@ -383,15 +389,16 @@
   ;;need to figure out constraints
    (let* ((new (make-puzzle 
                 :cells (puzzle-cells puzzle)
-                :constraints (puzzle-constraints puzzle)
+                :constraints (copy-list (puzzle-constraints puzzle))
                 :size (puzzle-size puzzle)))
           (tmp-constraint nil))
-     #|
+     
        (dolist (c (enumerate-cells new))
          (progn
            ;;(format t "looking at cell ~a~%" c)
            ;;get constraint from list
-           (setf tmp-constraint
+           (setf (cell-domain c) (copy-list (cell-domain c)))
+           #|(setf tmp-constraint
              (make-constraint :outcome (constraint-outcome (constraint-outcome c))
                               :operator (constraint-operation (constraint-operation c))
                               :region-cells (mapcar #'(lambda (regionc) 
@@ -405,9 +412,9 @@
             (mapcar #'(lambda (neighbor) 
                         (cell-at (cell-x neighbor) (cell-y neighbor) new))
               (cell-neighbors c)))
-
-           (set-cell-at new (cell-x c) (cell-y c) c)))
 |#
+           (set-cell-at new (cell-x c) (cell-y c) c)))
+
     new)
   )
 
@@ -419,9 +426,9 @@
          (minimum-domain (apply 'min domain-list))
          (tmp-cell nil))
     (progn 
-      (format t "domain-list ~a~% minimum-domain ~a~%" domain-list minimum-domain)
+      ;(format t "domain-list ~a~% minimum-domain ~a~%" domain-list minimum-domain)
       (setf tmp-cell (find minimum-domain cell-list :key #'(lambda (c)(length (cell-domain c))) :test #'equal))
-      (format t "tmp-cell is ~a~%" tmp-cell)
+      ;(format t "tmp-cell is ~a~%" tmp-cell)
       (if (null tmp-cell)
           nil
       (list (cell-x tmp-cell) (cell-y tmp-cell)))
