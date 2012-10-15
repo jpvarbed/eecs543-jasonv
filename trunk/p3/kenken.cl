@@ -138,15 +138,14 @@
   (show-domain-size puzzle)
   
   (format t "~%~%Searching...~%~%")
- ) 
-;  (let* ((solutions (if (impossible-puzzle-p puzzle)
-;                        nil
-;                      (search-solutions puzzle)))
-;         (n (length solutions)))
-;    (unless (= n 1)
-;      (format t "~2&There are ~r solution~:p:" n)
-;      (mapc #' show-puzzle solutions)))
-;  (values))
+  (let* ((solutions (if (impossible-puzzle-p puzzle)
+                        nil
+                      (search-solutions puzzle)))
+         (n (length solutions)))
+    (unless (= n 1)
+      (format t "~2&There are ~r solution~:p:" n)
+      (mapc #' show-puzzle solutions)))
+  (values))
 
 
 (defun search-solutions (puzzle &optional (func-call first-ambiguous))  
@@ -414,20 +413,26 @@
 
 (defun mrv-ambiguous (puzzle)
   "find the cell with the smallest domain"
-  (let* ((domain-list (mapcar #'(lambda (c) 
-                                  (if (ambiguous-cell-p c) (length (cell-domain c)) 10000)) (enumerate-cells puzzle)))
+  (let* ((cell-list (enumerate-cells puzzle))
+         (domain-list (mapcar #'(lambda (c) 
+                                  (if (ambiguous-cell-p c) (length (cell-domain c)) 10000)) cell-list))
          (minimum-domain (apply 'min domain-list))
          (tmp-cell nil))
     (progn 
       (format t "domain-list ~a~% minimum-domain ~a~%" domain-list minimum-domain)
-      (setf tmp-cell (elt (enumerate-cells puzzle) (position minimum-domain domain-list :test #'equal)))
+      (setf tmp-cell (find minimum-domain cell-list :key #'(lambda (c)(length (cell-domain c))) :test #'equal))
       (format t "tmp-cell is ~a~%" tmp-cell)
-      (cell-at puzzle (cell-x tmp-cell) (cell-y tmp-cell))
+      (if (null tmp-cell)
+          nil
+      (list (cell-x tmp-cell) (cell-y tmp-cell)))
     )
     ))
 (defun first-ambiguous (puzzle)
   "Returns the first cell with an amibigous value."
-  (some #'ambiguous-cell-p (enumerate-cells puzzle)))
+  (let ((tmp-cell (find-if #'ambiguous-cell-p (enumerate-cells puzzle))))
+    (if (null tmp-cell)
+        nil
+      (list (cell-x tmp-cell) (cell-y tmp-cell)))))
 
 
 (defun genList (max)
