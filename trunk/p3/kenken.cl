@@ -410,8 +410,19 @@
     new)
   )
 
-(defun mrv-ambiguous
+(defun mrv-ambiguous (puzzle)
+  "find the cell with the smallest domain"
+  (let* ((domain-list (mapcar #'(lambda (c) 
+                                  (if (ambiguous-cell-p c) (length (cell-domain c)) 10000)) (enumerate-cells puzzle)))
+         (minimum-domain (apply 'min domain-list))
+         (tmp-cell nil))
+    (progn 
+      (format t "domain-list ~a~% minimum-domain ~a~%" domain-list minimum-domain)
+      (setf tmp-cell (elt (enumerate-cells puzzle) (position minimum-domain domain-list :test #'equal)))
+      (format t "tmp-cell is ~a~%" tmp-cell)
+      (cell-at puzzle (cell-x tmp-cell) (cell-y tmp-cell))
     )
+    ))
 (defun first-ambiguous (puzzle)
   "Returns the first cell with an amibigous value."
   (some #'ambiguous-cell-p (enumerate-cells puzzle)))
