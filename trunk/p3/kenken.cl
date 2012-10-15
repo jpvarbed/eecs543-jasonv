@@ -12,6 +12,7 @@
   (size        nil :type atom)
   (constraints nil :type list))
 
+(defparameter num-guesses nil)
 
 (defun cell-at (puzzle x y)
   "Returns an array reference to the cell with coordinate (x,y)."
@@ -154,6 +155,7 @@
     (if (null c)
         (list puzzle)
       (mapcan #'(lambda (possible-val)
+                  (1+ num-guesses)
                   (let* ((puzzle2 (make-copy-puzzle puzzle))
                          (c2 (cell-at puzzle2 (cell-x c) (cell-y c))))
                     (setf (cell-domain c2) (list possible-val))
