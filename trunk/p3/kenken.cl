@@ -335,29 +335,33 @@
 (defun make-copy-puzzle (puzzle) 
   "Returns a copy of the puzzle"
   ;;need to figure out constraints
-   (let* ((new (make-diagram 
-                :cells (mapcar #'copy-cells
-                         (puzzle-cells puzzle))
-                :size puzzle-size puzzle))
-               (tmp nil))
-     ;; Put in the neighbors for each cell
-       ;;set constraints in each cell
-       ;;constraints overall
-       ;;Neighbors is good
-       (dolist (c (puzzle-cells new))
+   (let* ((new (make-puzzle 
+                :cells (puzzle-cells puzzle)
+                :constraints (puzzle-constraints puzzle)
+                :size (puzzle-size puzzle)))
+          (tmp-constraint nil))
+     #|
+       (dolist (c (enumerate-cells new))
          (progn
-           (setf tmp
-             (make-constraint :outcome (constraint-outcome (cell-constraint c))
-                              :operator (constraint-operation (cell-operation c))
+           ;;(format t "looking at cell ~a~%" c)
+           ;;get constraint from list
+           (setf tmp-constraint
+             (make-constraint :outcome (constraint-outcome (constraint-outcome c))
+                              :operator (constraint-operation (constraint-operation c))
                               :region-cells (mapcar #'(lambda (regionc) 
-                                                        (cell-at regionc-x regionc-y new))
-                                              (constraint-region-cells (cell-region-cells c)))))
-           (setf (cell-constraint c) tmp)
-           (setf (puzzle-constraints new) (cons tmp (puzzle-constraints new)))
-      (setf (cell-neighbors c)
+                                                        (cell-at (first regionc) (rest regionc) new))
+                                              (constraint-region-cells (cell-constraint c)))))
+           
+           ;;set it in cell
+           ;;(setf (cell-constraint c) tmp-constraint)
+
+       (setf (cell-neighbors c)
             (mapcar #'(lambda (neighbor) 
-                        (cell-at neighbor-x neighbor-y new))
-                    (cell-neighbors c)))))
+                        (cell-at (cell-x neighbor) (cell-y neighbor) new))
+              (cell-neighbors c)))
+
+           (set-cell-at new (cell-x c) (cell-y c) c)))
+|#
     new)
   )
 
