@@ -147,7 +147,7 @@
 
   (let* ((solutions (if (impossible-puzzle-p puzzle)
                         nil
-                      (search-solutions puzzle)))
+                      (search-solutions puzzle 'mrv-ambiguous)))
          (n (length solutions)))
     
     (if (= n 1)
