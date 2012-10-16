@@ -131,7 +131,7 @@
   "Top level call to KenKen solving algorithm. Start by deducing all values possible,
    then begin guessing and searching for solutions. Will print a list of possible 
    solutions, if any."
-  
+
   (show-constraints puzzle)
   (every #'(lambda (cell) (propogate-constraints cell puzzle)) 
          (enumerate-cells puzzle))
@@ -192,10 +192,10 @@
                         (if (propogate-constraints c2 puzzle2 '(1))
                             (progn
                               (setf *ext-puzzle* puzzle2)
-                              (show-puzzle puzzle2)
-                              (show-constraints puzzle2)
-                              (show-domain-size puzzle2)
-                              (break)
+                              ;(show-puzzle puzzle2)
+                              ;;(show-constraints puzzle2)
+                              ;(show-domain-size puzzle2)
+                              ;(break)
                               (search-solutions puzzle2))
                           nil))))
           (cell-domain cell-c))))))
@@ -214,10 +214,16 @@
  
   (let ((region-neighbors (remove `(,(cell-x cell) ,(cell-y cell)) 
                                   (constraint-region-cells (cell-constraint cell)) :test #'equal))
-        (dom-size (length (cell-domain cell))))
-    
+        (dom-size (length (cell-domain cell)))
+        (total-dom-before 0)
+        (total-dom-after 0))
+    (setf total-dom-before (domain-size-of-neighbors (cell-x cell) (cell-y cell) puzzle))
     (remove-neighbor-vals (cell-x cell) (cell-y cell) puzzle)
-    
+    (setf total-dom-after (domain-size-of-neighbors (cell-x cell) (cell-y cell) puzzle))
+    (format t "before ~a after ~a~%" total-dom-before total-dom-after)
+
+     (if (equal total-dom-after 6) t
+    (unless (impossible-puzzle-p puzzle)
     (if (not (null override))
         (let ((val (cell-domain cell)))
           (setf (cell-domain cell) val)
@@ -237,11 +243,30 @@
                 ;(print-cell cell)
                 (every #'(lambda (coords) 
                            (propogate-constraints (cell-at puzzle (first coords) (second coords)) puzzle))
-                       (cell-neighbors cell))))))))
-  t)
+                       (cell-neighbors cell)))))))t))))
   
 
-
+(defun domain-size-of-neighbors (x y puzzle)
+  
+  (let ((cell (cell-at puzzle x y))
+        (counter 0))
+        
+    (loop for xn from 1 to (puzzle-size puzzle) do
+          (unless (equal xn x)
+            (let* ((n-cell (cell-at puzzle xn y))
+                   (n-dom (cell-domain n-cell)))
+              (setf counter (+ counter (length n-dom)))
+              )))
+    
+    (loop for yn from 1 to (puzzle-size puzzle) do
+          (unless (equal yn y)
+            (let* ((n-cell (cell-at puzzle x yn))
+                   (n-dom (cell-domain n-cell)))
+              (setf counter (+ counter (length n-dom)))
+              )))
+    counter
+    )
+  )
 (defun remove-neighbor-vals (x y puzzle)
   "If any cells in cell's row/column have been assigned a value, remove it from
    cell's domain."
@@ -343,7 +368,7 @@
   (print-formatted-puzzle puzzle stream #'getCellValue "~%Puzzle:"))
 
 
-(defun show-domain-size (puzzle &optional (stream t))
+(defun show-domain-sizes (puzzle &optional (stream t))
   "Print the puzzle, showing the number of possible values for each cell."
   (print-formatted-puzzle puzzle stream #'getCellDomainSize "~%Domain Sizes:"))
 
