@@ -128,7 +128,9 @@
 
 
 
-(defun print-solutions (puzzle) 
+(defun print-solutions (puzzle &key 
+                               (search-heuristic #'first-ambiguous)
+                               (extended-consistency nil))
   "Top level call to KenKen solving algorithm. Start by deducing all values possible,
    then begin guessing and searching for solutions. Will print a list of possible 
    solutions, if any."
@@ -137,7 +139,7 @@
   (every #'(lambda (cell) (propogate-constraints cell puzzle)) 
          (enumerate-cells puzzle))
   
-  (format t "~%~%After constraint propogation the puzzle is:~%")
+  (format t "~%After constraint propogation the puzzle is:~%")
   (show-puzzle puzzle)
   (show-domain-sizes puzzle)
   
@@ -147,7 +149,7 @@
 
   (let* ((solutions (if (impossible-puzzle-p puzzle)
                         nil
-                      (search-solutions puzzle)))
+                      (search-solutions puzzle search-heuristic)))
          (n (length solutions)))
     
     (if (= n 1)
@@ -163,30 +165,28 @@
 
 
 
-(defun search-solutions (puzzle &optional (search-heuristic 'first-ambiguous))  
+(defun search-solutions (puzzle search-heuristic)  
   "Start by guessing a value for an ambiguous cell, and propogate the value searching
    for a solution."
   
-  (if (impossible-puzzle-p puzzle)
-      nil  
-    (let ((c (funcall search-heuristic puzzle)))
+  (let ((c (funcall search-heuristic puzzle)))
     
-      (if (null c)
-          (if (impossible-puzzle-p puzzle)
-              nil
-            (list puzzle))
-        
-        (let ((cell-c (cell-at puzzle (first c) (first (rest c)))))
-          (mapcan #'(lambda (possible-val)
-                      (setf *num-guesses* (+ 1 *num-guesses*))
-                      (let* ((puzzle2 (make-copy-puzzle puzzle))
-                             (c2 (cell-at puzzle2 (cell-x cell-c) (cell-y cell-c))))
-                        (progn
-                          (setf (cell-domain c2) (list possible-val))
-                          (if (propogate-constraints c2 puzzle2 '(1))
-                              (search-solutions puzzle2 search-heuristic)
-                            nil))))
-            (cell-domain cell-c)))))))
+    (if (null c)
+        (if (impossible-puzzle-p puzzle)
+            nil
+          (list puzzle))
+      
+      (let ((cell-c (cell-at puzzle (first c) (first (rest c)))))
+        (mapcan #'(lambda (possible-val)
+                    (setf *num-guesses* (+ 1 *num-guesses*))
+                    (let* ((puzzle2 (make-copy-puzzle puzzle))
+                           (c2 (cell-at puzzle2 (cell-x cell-c) (cell-y cell-c))))
+                      (progn
+                        (setf (cell-domain c2) (list possible-val))
+                        (if (propogate-constraints c2 puzzle2 t)
+                            (search-solutions puzzle2 search-heuristic)
+                          nil))))
+          (cell-domain cell-c))))))
 
 
 (defun propogate-constraints (cell puzzle &optional (override nil))
@@ -203,6 +203,8 @@
         t
       (progn
         (remove-neighbor-vals (cell-x cell) (cell-y cell) puzzle)
+        
+        
         
         (if (all-neighbors-satisfied region-neighbors puzzle) 
             (setf (cell-domain cell) (calculate-cell cell region-neighbors puzzle)))
@@ -323,7 +325,7 @@
                (print-constraint constraint stream)
                t)
            (puzzle-constraints puzzle)))
-  (format stream "~%~%")
+  (format stream "~%")
   nil)
 
 
