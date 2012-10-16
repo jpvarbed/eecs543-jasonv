@@ -12,7 +12,10 @@
   (size        nil :type atom)
   (constraints nil :type list))
 
-(defparameter num-guesses nil)
+(defparameter *num-guesses* 0)
+
+;for debugging internal puzzle states externally
+(defparameter *ext-puzzle* nil)
 
 (defun cell-at (puzzle x y)
   "Returns an array reference to the cell with coordinate (x,y)."
@@ -138,71 +141,128 @@
   (show-domain-size puzzle)
   
   (format t "~%~%Searching...~%~%")
+
+  (setf *num-guesses* 0)
+ 
   (let* ((solutions (if (impossible-puzzle-p puzzle)
                         nil
                       (search-solutions puzzle)))
          (n (length solutions)))
-    (unless (= n 1)
-      (format t "~2&There are ~r solution~:p:" n)
-      (mapc #' show-puzzle solutions)))
+    
+    (if (= n 1)
+        (progn
+          (format t "~2&There is one solution~:p:")
+          (show-puzzle (first solutions)))
+
+      (progn
+        (format t "~2&There are ~r solution~:p:" n)
+        ;(show-puzzle (first solutions))
+        ;(show-puzzle (first (rest solutions)))
+        ;(show-puzzle (first (rest (rest solutions))))
+                     
+        ;(mapc #'show-puzzle solutions))))
+        )))
   (values))
 
 
 (defun search-solutions (puzzle &key (func-call 'first-ambiguous))  
   
-  (let* ((c (funcall func-call puzzle))
-         (cell-c (cell-at puzzle (first c) (first (rest c)))))
-    (progn (format t "cell-c ~a~%" cell-c)
-    (if (null cell-c)
-        (list puzzle)
-      (mapcan #'(lambda (possible-val)
-                  (1+ num-guesses)
-                  (format t "possible-val is ~a~%" possible-val)
-                  (let* ((puzzle2 (make-copy-puzzle puzzle))
-                         (c2 (cell-at puzzle2 (cell-x cell-c) (cell-y cell-c))))
-                    (progn
-                      (format t "puzzle copy is ~a~%" puzzle2)
-                      (break)
-                    (setf (cell-domain c2) (list possible-val))
-                    (if (propogate-constraints c2 puzzle2)
-                        (search-solutions puzzle2)
-                      nil))))
-        (cell-domain cell-c))))))
-
-
-(defun propogate-constraints (cell puzzle)
-  "Reduce the values in each cell's domain by considering its neighbor cells.
-   Return nil only when the constraints lead to an impossible puzzle."
-  ;(format t "Propogate-contraints => Cell (~d,~d) ~%" (cell-x cell) (cell-y cell))
-  ;(format t "Propogate-constraints => ")
-  ;(print-cell cell)
-  ;(format t "~%")
-  
-  (let ((old-dom-size (length (cell-domain cell)))
-        (val (find-cell-value cell puzzle)))
+  (let ((c (funcall func-call puzzle)))
     
-    (if (equal old-dom-size 1)
-        ;we already know our value, just make sure the neighbor's have it remove
-        (every #'(lambda (n-cell) 
-                   (remove-domain-val val (cell-at puzzle (first n-cell) (second n-cell))))
-               (cell-neighbors cell))
+    (if (null c)
+        (if (impossible-puzzle-p puzzle)
+            (progn
+              (format t "Found impossible puzzle!")
+              nil
+              )
+          (list puzzle))
+      
+      (let ((cell-c (cell-at puzzle (first c) (first (rest c)))))
+        ;(format t "Guessing solution for cell: ")
+        ;(print-cell cell-c)
+  
+        (mapcan #'(lambda (possible-val)
+                    (setf *num-guesses* (+ 1 *num-guesses*))
+                    ;(format t "possible-val is ~a~%" possible-val)
+                    (let* ((puzzle2 (make-copy-puzzle puzzle))
+                           (c2 (cell-at puzzle2 (cell-x cell-c) (cell-y cell-c))))
+                      (progn
+                        (setf (cell-domain c2) (list possible-val))
+                        ;(setf *ext-puzzle* puzzle2)
+                        (if (propogate-constraints c2 puzzle2 '(1))
+                            (progn
+                              (setf *ext-puzzle* puzzle2)
+                              (show-puzzle puzzle2)
+                              (show-constraints puzzle2)
+                              (show-domain-size puzzle2)
+                              (break)
+                              (search-solutions puzzle2))
+                          nil))))
+          (cell-domain cell-c))))))
+
+
+(defun propogate-constraints (cell puzzle &optional (override nil))
+  "Look at a cell; if it is in a subregion where every other cell in the subregion
+   is assigned, calculate its value. Also, remove from its domain all values that have
+   been assigned to other cells in its row and column."
+  
+  ;(format t "Propogating => ~%")
+  ;(format t "   Before => ")
+  ;(print-cell cell)
+  ;(format t "   After => ")
+  ;(print-cell cell)   
  
-      ;we just computed our value, tell neighbors and propogate
-      (unless (null val)
-        (progn
-          ;(format t "    Value of Cell (~d,~d): ~d~%" (cell-x cell) (cell-y cell) val)
+  (let ((region-neighbors (remove `(,(cell-x cell) ,(cell-y cell)) 
+                                  (constraint-region-cells (cell-constraint cell)) :test #'equal))
+        (dom-size (length (cell-domain cell))))
+    
+    (remove-neighbor-vals (cell-x cell) (cell-y cell) puzzle)
+    
+    (if (not (null override))
+        (let ((val (cell-domain cell)))
           (setf (cell-domain cell) val)
+          (every #'(lambda (coords) 
+                     (propogate-constraints (cell-at puzzle (first coords) (second coords)) puzzle))
+                 (cell-neighbors cell)))
+    
+      (if (and (all-neighbors-satisfied region-neighbors puzzle)
+               (not (equal dom-size 1)))
           
-          (every #'(lambda (n-cell) 
-                     (remove-domain-val val (cell-at puzzle (first n-cell) (second n-cell))))
-                 (cell-neighbors cell))
-          
-          ;(format t "Propogating to neighbors: ~a~%" (cell-neighbors cell))
-          (every #'(lambda (n-cell-coord)
-                     (propogate-constraints (cell-at puzzle (first n-cell-coord) (second n-cell-coord)) puzzle))
-                 (cell-neighbors cell))))))
+          (let ((val (calculate-cell cell region-neighbors puzzle)))
+            (if (null val)
+                (setf (cell-domain cell) '())
+              (progn
+                (setf (cell-domain cell) val)
+                ;(format t "    Solved => ")
+                ;(print-cell cell)
+                (every #'(lambda (coords) 
+                           (propogate-constraints (cell-at puzzle (first coords) (second coords)) puzzle))
+                       (cell-neighbors cell))))))))
   t)
   
+
+
+(defun remove-neighbor-vals (x y puzzle)
+  "If any cells in cell's row/column have been assigned a value, remove it from
+   cell's domain."
+  
+  (let ((cell (cell-at puzzle x y)))
+        
+    (loop for xn from 1 to (puzzle-size puzzle) do
+          (unless (equal xn x)
+            (let* ((n-cell (cell-at puzzle xn y))
+                   (n-dom (cell-domain n-cell)))
+              (if (equal (length n-dom) 1) 
+                  (setf (cell-domain cell) (remove (first n-dom) (cell-domain cell)))))))
+    
+    (loop for yn from 1 to (puzzle-size puzzle) do
+          (unless (equal yn y)
+            (let* ((n-cell (cell-at puzzle x yn))
+                   (n-dom (cell-domain n-cell)))
+              (if (equal (length n-dom) 1)
+                  (setf (cell-domain cell) (remove (first n-dom) (cell-domain cell)))))))))
+    
+
 
 (defun find-cell-value (cell puzzle)
   "Check if we can deduce a cell's value by checking that all other cells in its region
@@ -228,27 +288,36 @@
    Use its constraint and its neighbors' values to calculate value.
    NOTE: n-list is a list of region neighbors, not neighbors from rows/cols."
   
-  ;(format t "calculate-cell =>")
-  ;(print-cell cell)
-  
-  (let ((op-list (cons (constraint-operation (cell-constraint cell)) '()))
-        (outcome (constraint-outcome (cell-constraint cell))))
+  (let ((operation (cons (constraint-operation (cell-constraint cell)) '()))
+        (outcome (constraint-outcome (cell-constraint cell)))
 
-    ;loop through all neighbors and add their values to out op-list
-    ;at this point, we know each neighbor has only a single domain value
-    (append op-list (mapcan #'(lambda (n-cell)
-                                (cell-domain (cell-at puzzle (first n-cell) (second n-cell))))
-                      n-list))
-    
+        ;loop through all neighbors and add their values to out op-list
+        ;at this point, we know each neighbor has only a single domain value
+        (op-list (mapcan #'(lambda (n-cell)
+                             (cell-domain (cell-at puzzle (first n-cell) (second n-cell))))
+                   n-list)))
+
+    (some #'(lambda (x) (let ((new-op-list (append op-list (cons x '()))))
+                          ;now we have all of the parameter values, we need to try all permuations
+                          (some #'(lambda (perm) (if (equal (eval (append operation perm)) outcome)
+                                                     (list x)
+                                                   nil))
+                                (permutations new-op-list))))
+          (cell-domain cell))))
+
+
     ;append every value in cell's domain to the op-list and evaluate
     ;once we see a value that matches outcome, we have our final value (return it)
-    (some #'(lambda (x) (if (equal (eval (append op-list (cons x '()))) outcome)
-                            (progn 
-                              ;(format t "calculate-cell => value ~a works for cell:" x)
-                              ;(print-cell cell)
-                              (list x))))
-           (cell-domain cell))))
-
+;    (some #'(lambda (x) (if (equal (eval (append op-list (cons x '()))) outcome)
+;                            (progn 
+;                              ;(format t "calculate-cell => value ~a works for cell:" x)
+;                              ;(print-cell cell)
+;                              (list x))))
+;           (cell-domain cell))))
+    
+    
+    
+    
 
 (defun all-neighbors-satisfied (neighbor-list puzzle)
   "Returns true if all cells in neighbor-list have a domain of size 1."
@@ -305,7 +374,7 @@
    cell (x,y) falls under."
 
   (let* ((constraint (getCellConstraint puzzle x y ))
-         (idx (position constraint (puzzle-constraints puzzle) :test #'equal)))
+         (idx (position constraint (puzzle-constraints puzzle) :test #'constraint-equal)))
     (if (not (null idx))
         ;65 is the ASCII value of 'A' 
         (code-char (+ 65 idx))
@@ -315,7 +384,6 @@
 (defun getCellConstraint (puzzle x y)
   "Called while constructing the puzzle; returns the constraint that references
    cell (x,y)."
-  
   (let ((cell (cell-at puzzle x y)))
     (cell-constraint cell)))
   
@@ -323,7 +391,6 @@
 (defun getCellDomainSize (puzzle x y)
   "Returns the number of possible values in the domain of a given
    (x,y) cell"
-  
   (let ((cell (cell-at puzzle x y)))
     (length (cell-domain cell))))
 
@@ -331,12 +398,19 @@
 (defun getCellValue (puzzle x y)
   "Returns the value for cell (x,y) if it is known, '.' is it is still uknown,
    or '?' if there is no possible value to satisfy all constraints for that cell"
- 
   (let* ((cell (cell-at puzzle x y))
          (dom (cell-domain cell)))
     (cond ((eq (length dom) 1) (first dom))
           ((null dom) #\?)
           (t #\.))))
+
+(defun constraint-equal (c1 c2)
+  "Returns true if the two constraints are the same, false otherwise."
+  
+  (and (equal (constraint-outcome c1) (constraint-outcome c2))
+       (equal (constraint-operation c1) (constraint-operation c2))
+       (equal (constraint-region-cells c1) (constraint-region-cells c2))))
+
 
 
 (defun print-formatted-puzzle (puzzle stream fname &optional(title "~2&Diagram:")) 
@@ -387,18 +461,22 @@
 (defun make-copy-puzzle (puzzle) 
   "Returns a copy of the puzzle"
   ;;need to figure out constraints
-   (let* ((new (make-puzzle 
-                :cells (puzzle-cells puzzle)
-                :constraints (copy-list (puzzle-constraints puzzle))
+  
+  (let* ((new (make-puzzle 
+                :cells (make-array `(,(puzzle-size puzzle) ,(puzzle-size puzzle)))
+                :constraints nil
                 :size (puzzle-size puzzle)))
           (tmp-constraint nil))
-     
-       (dolist (c (enumerate-cells new))
-         (progn
-           ;;(format t "looking at cell ~a~%" c)
-           ;;get constraint from list
-           (setf (cell-domain c) (copy-list (cell-domain c)))
-           #|(setf tmp-constraint
+
+    (copy-cell-array puzzle new)
+    (copy-constraint-list puzzle new)
+    
+    (dolist (c (enumerate-cells new))
+       (progn
+         ;;(format t "looking at cell ~a~%" c)
+         ;;get constraint from list
+         (setf (cell-domain c) (copy-list (cell-domain c)))
+         #|(setf tmp-constraint
              (make-constraint :outcome (constraint-outcome (constraint-outcome c))
                               :operator (constraint-operation (constraint-operation c))
                               :region-cells (mapcar #'(lambda (regionc) 
@@ -413,10 +491,50 @@
                         (cell-at (cell-x neighbor) (cell-y neighbor) new))
               (cell-neighbors c)))
 |#
-           (set-cell-at new (cell-x c) (cell-y c) c)))
+         (set-cell-at new (cell-x c) (cell-y c) c)))
+     
+     new))
 
-    new)
-  )
+
+
+(defun copy-cell-array (src-puzzle dest-puzzle)
+  "Make a deep copy of the cells from src-puzzle and stores them in 
+   dest-puzzle. Assumes dest-puzzle already has an array created to hold
+   cells."
+
+  (loop for x from 1 to (puzzle-size src-puzzle) do
+        (loop for y from 1 to (puzzle-size src-puzzle) do
+              (set-cell-at dest-puzzle x y 
+                           (make-copy-cell (cell-at src-puzzle x y))))))
+
+
+(defun copy-constraint-list (src-puzzle dest-puzzle)
+  
+  (setf (puzzle-constraints dest-puzzle)
+    (mapcar #'(lambda (constraint)
+                (make-copy-constraint constraint))
+      (puzzle-constraints src-puzzle))))
+  
+  
+(defun make-copy-cell (cell)
+  "Returns a deep copy of a cell object."
+  
+  (make-cell
+   :x (cell-x cell)
+   :y (cell-y cell)
+   :domain (copy-list (cell-domain cell))
+   :constraint (make-copy-constraint (cell-constraint cell))
+   :neighbors (copy-list (cell-neighbors cell))))
+
+
+(defun make-copy-constraint (constraint)
+  "Returns a deep copy of a constraint object."
+  
+  (make-constraint 
+   :outcome (constraint-outcome constraint)
+   :operation (constraint-operation constraint)
+   :region-cells (copy-list (constraint-region-cells constraint))))
+
 
 (defun mrv-ambiguous (puzzle)
   "find the cell with the smallest domain"
@@ -434,6 +552,7 @@
       (list (cell-x tmp-cell) (cell-y tmp-cell)))
     )
     ))
+
 (defun first-ambiguous (puzzle)
   "Returns the first cell with an amibigous value."
   (let ((tmp-cell (find-if #'ambiguous-cell-p (enumerate-cells puzzle))))
@@ -449,4 +568,15 @@
     (loop for n from 1 to max do
           (push n l))
     (nreverse l)))
+
+
+(defun permutations (bag)
+  
+  (if (null bag)
+      '(())
+    (mapcan #'(lambda (e)
+                (mapcar #'(lambda (p) (cons e p))
+                  (permutations
+                   (remove e bag :count 1 :test #'eq))))
+      bag)))
 
