@@ -136,7 +136,7 @@
    solutions, if any."
   
   (show-constraints puzzle)
-  (every #'(lambda (cell) (propogate-constraints cell puzzle)) 
+  (every #'(lambda (cell) (propogate-constraints cell puzzle extended-consistency)) 
          (enumerate-cells puzzle))
   
   (format t "~%After constraint propogation the puzzle is:~%")
@@ -149,7 +149,7 @@
 
   (let* ((solutions (if (impossible-puzzle-p puzzle)
                         nil
-                      (search-solutions puzzle search-heuristic)))
+                      (search-solutions puzzle search-heuristic extended-consistency)))
          (n (length solutions)))
     
     (if (= n 1)
@@ -165,7 +165,7 @@
 
 
 
-(defun search-solutions (puzzle search-heuristic)  
+(defun search-solutions (puzzle search-heuristic extended-consistency)  
   "Start by guessing a value for an ambiguous cell, and propogate the value searching
    for a solution."
   
@@ -183,13 +183,13 @@
                            (c2 (cell-at puzzle2 (cell-x cell-c) (cell-y cell-c))))
                       (progn
                         (setf (cell-domain c2) (list possible-val))
-                        (if (propogate-constraints c2 puzzle2 t)
-                            (search-solutions puzzle2 search-heuristic)
+                        (if (propogate-constraints c2 puzzle2 extended-consistency t)
+                            (search-solutions puzzle2 search-heuristic extended-consistency)
                           nil))))
           (cell-domain cell-c))))))
 
 
-(defun propogate-constraints (cell puzzle &optional (override nil))
+(defun propogate-constraints (cell puzzle extended-consistency &optional (override nil))
   "Look at a cell; if it is in a subregion where every other cell in the subregion
    is assigned, calculate its value. Also, remove from its domain all values that have
    been assigned to other cells in its row and column."
@@ -204,7 +204,7 @@
       (progn
         (remove-neighbor-vals (cell-x cell) (cell-y cell) puzzle)
         
-        
+        (remove-inconsistent-vals cell puzzle)
         
         (if (all-neighbors-satisfied region-neighbors puzzle) 
             (setf (cell-domain cell) (calculate-cell cell region-neighbors puzzle)))
@@ -214,11 +214,50 @@
           (if (or (< (length (cell-domain cell)) dom-size)
                   (not (null override)))
               (every #'(lambda (coords) 
-                           (propogate-constraints (cell-at puzzle (first coords) (second coords)) puzzle))
+                         (propogate-constraints (cell-at puzzle (first coords) (second coords)) 
+                                                puzzle extended-consistency))
                        (cell-neighbors cell))
             t))))))
 
 
+(defun remove-inconsistent-vals (cell puzzle)
+  "Remove any values in cell's domain that can't possibly satisfy cell's constraint
+   given the remaining possible values in cell's region neighbors."
+  
+  (let ((outcome (constraint-outcome (cell-constraint cell)))
+        (operation (constraint-operation (cell-constraint cell))))
+    (every #'(lambda (val) 
+               (if (some #'(lambda (param-list) 
+                            (test-param-set outcome (append val param-list) operation))
+                        (region-possible-vals cell puzzle))
+                   (remove-domain-val vall cell)))
+           (cell-domain cell))))
+
+
+(defun region-possible-vals (cell puzzle)
+  "Enumerates a list of possible valiues from the domains of all neighbors in 
+   cell's region."
+  
+  (let ((region-neighbors (remove `(,(cell-x cell) ,(cell-y cell)) 
+                                  (constraint-region-cells (cell-constraint cell)) :test #'equal)))
+    
+    
+
+
+  ))
+
+  
+(defun test-param-set (outcome val-list operation)
+  "Returns true if any permutation of the val-list values evaluate to outcome."
+  
+  (some #'(lambda (ordering)
+            (progn
+              (print (append operation ordering))
+              (print (eval (append operation ordering)))
+              (equal (eval (append operation ordering)) outcome)
+            ))
+       (permutations val-list))) 
+  
 
 (defun remove-neighbor-vals (x y puzzle)
   "If any of cell's column/row neighbors have been assigned a value, remove it from
