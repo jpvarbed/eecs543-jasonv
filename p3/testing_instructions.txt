@@ -4,6 +4,7 @@ SETUP: load auxfns.lisp and kenken.cl
 	  mrv-ambiguous, and extended-consistency. We were sure that each 
   	  resulted in the same puzzle solutions.
 
+
 ========================================================================
 Test 1: print-solutions test
 
