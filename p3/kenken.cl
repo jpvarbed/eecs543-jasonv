@@ -144,7 +144,7 @@
   (show-domain-sizes puzzle)
   
   (format t "~%~%Searching...~%~%")
-
+  (break)
   (setf *num-guesses* 0)
 
   (let* ((solutions (if (impossible-puzzle-p puzzle)
@@ -223,38 +223,56 @@
 (defun remove-inconsistent-vals (cell puzzle)
   "Remove any values in cell's domain that can't possibly satisfy cell's constraint
    given the remaining possible values in cell's region neighbors."
-  
+  (format t "looking at cell ~a~%" cell)
   (let ((outcome (constraint-outcome (cell-constraint cell)))
-        (operation (constraint-operation (cell-constraint cell))))
-    (every #'(lambda (val) 
-               (if (some #'(lambda (param-list) 
-                            (test-param-set outcome (append val param-list) operation))
-                        (region-possible-vals cell puzzle))
-                   (remove-domain-val vall cell)))
-           (cell-domain cell))))
+        (operation (constraint-operation (cell-constraint cell)))
+        (possible-vals (region-possible-vals cell puzzle)))
+    (unless (null possible-vals)
+    (dolist (val (cell-domain cell))
+               (if (not (some #'(lambda (param-list) 
+                            (test-param-set outcome (cons val (if (atom param-list) (list param-list) param-list)) operation))
+                        possible-vals))
+                   (remove-domain-val val cell))))))
 
 
 (defun region-possible-vals (cell puzzle)
   "Enumerates a list of possible valiues from the domains of all neighbors in 
    cell's region."
   
-  (let ((region-neighbors (remove `(,(cell-x cell) ,(cell-y cell)) 
-                                  (constraint-region-cells (cell-constraint cell)) :test #'equal)))
-    
-    
-
+  (let* ((region-neighbors (remove `(,(cell-x cell) ,(cell-y cell)) 
+                                   (constraint-region-cells (cell-constraint cell)) :test #'equal))
+         (tmp nil))
+    ;;get first cell and put each val in there in front of every possibility, so slowly trim down neighbor list
+    (format t "region neighbors ~a~%" region-neighbors)
+    (unless (null region-neighbors)
+      (setf tmp (region-possible-vals-helper region-neighbors puzzle)))
+    (format t "answer is ~a~%" tmp )
+    tmp
 
   ))
-
+(defun region-possible-vals-helper(neighbors puzzle)
+  (format t "neighbors is ~a~%" neighbors)
+  (let* ((first-cell (cell-at puzzle (first (first neighbors)) (second (first neighbors))) ))
+    (format t "domain is ~a~%" (cell-domain first-cell))
+    (if (eql (length neighbors) 1) 
+        (cell-domain first-cell)
+    
+    (mapcan #'(lambda (dval) 
+                  (mapcar #'(lambda (rest-list) (cons dval (if (atom rest-list) (list rest-list) rest-list)))
+                    (region-possible-vals-helper (rest neighbors) puzzle))) 
+      (cell-domain first-cell)))
+    )
+  )
   
 (defun test-param-set (outcome val-list operation)
   "Returns true if any permutation of the val-list values evaluate to outcome."
-  
+  (format t "outcome: ~a val-list ~a operation ~a~%" outcome val-list operation)
   (some #'(lambda (ordering)
             (progn
-              (print (append operation ordering))
-              (print (eval (append operation ordering)))
-              (equal (eval (append operation ordering)) outcome)
+              (print (cons operation ordering))
+              (print (eval (cons operation ordering)))
+              (format t "~%")
+              (equal (eval (cons operation ordering)) outcome)
             ))
        (permutations val-list))) 
   
@@ -332,7 +350,8 @@
 (defun remove-domain-val (val cell)
   "Removes 'val' from the cell's domain if it exists in the domain."
 
-  (setf (cell-domain cell) (remove (first val) (cell-domain cell) :test #'equal))
+  (setf (cell-domain cell) (remove val (cell-domain cell) :test #'equal))
+  (format t "for cell (~a, ~a) domain is now ~a~%" (cell-x cell) (cell-y cell) (cell-domain cell) )
   t)
 
 
