@@ -90,10 +90,11 @@
                                                                          :operation (first (rest tuple))
                                                                          :region-cells (first (rest (rest tuple)))))
                                               tuples))))
-      
-      (loop for x from 1 to dimension do
-            (loop for y from 1 to dimension do
-                  (set-cell-at puzzle x y (create-cell puzzle dimension x y))))
+      ;only want to create cells if tuples were provided as an argument
+      (if (not (null tuples))
+          (loop for x from 1 to dimension do
+                (loop for y from 1 to dimension do
+                      (set-cell-at puzzle x y (create-cell puzzle dimension x y)))))
     puzzle)))
 
 
@@ -171,10 +172,10 @@
    solutions, if any."
   
   (show-constraints puzzle)
-  (every #'(lambda (cell) (propogate-constraints cell puzzle extended-consistency?)) 
+  (every #'(lambda (cell) (propagate-constraints cell puzzle extended-consistency?)) 
          (enumerate-cells puzzle))
   
-  (format t "~%After constraint propogation the puzzle is:~%")
+  (format t "~%After constraint propagation the puzzle is:~%")
   (show-puzzle puzzle)
   (show-domain-sizes puzzle)
   
@@ -188,10 +189,7 @@
          (n (length solutions)))
     
     (if (= n 1)
-        (progn
-          (format t "~2&There is one solution:")
-          (show-puzzle (first solutions)))
-
+        (show-puzzle (first solutions) :msg "There is one solution:")
       (progn
         (format t "~2&There are ~r solution~:p:" n)
         (mapc #'show-puzzle solutions))))
@@ -201,7 +199,7 @@
 
 
 (defun search-solutions (puzzle search-heuristic extended-consistency)  
-  "Start by guessing a value for an ambiguous cell, and propogate the value searching
+  "Start by guessing a value for an ambiguous cell, and propagate the value searching
    for a solution."
   
   (let ((c (funcall search-heuristic puzzle)))
@@ -218,13 +216,13 @@
                            (c2 (cell-at puzzle2 (cell-x cell-c) (cell-y cell-c))))
                       (progn
                         (setf (cell-domain c2) (list possible-val))
-                        (if (propogate-constraints c2 puzzle2 extended-consistency t)
+                        (if (propagate-constraints c2 puzzle2 extended-consistency t)
                             (search-solutions puzzle2 search-heuristic extended-consistency)
                           nil))))
           (cell-domain cell-c))))))
 
 
-(defun propogate-constraints (cell puzzle extended-consistency &optional (override nil))
+(defun propagate-constraints (cell puzzle extended-consistency &optional (override nil))
   "Look at a cell; if it is in a subregion where every other cell in the subregion
    is assigned, calculate its value. Also, remove from its domain all values that have
    been assigned to other cells in its row and column."
@@ -255,7 +253,7 @@
           (if (or (< (length (cell-domain cell)) dom-size)
                   (not (null override)))
               (every #'(lambda (coords) 
-                         (propogate-constraints (cell-at puzzle (first coords) (second coords)) 
+                         (propagate-constraints (cell-at puzzle (first coords) (second coords)) 
                                                 puzzle extended-consistency))
                        (cell-neighbors cell))
             t))))))
@@ -401,18 +399,21 @@
 
 
 
-(defun show-puzzle (puzzle &optional (stream t))
+(defun show-puzzle (puzzle &key (msg nil) (stream t))
   "Print the puzzle, showing the current known solution for each cell."
+  (if (not (null msg)) (format stream "~a~%" msg))
   (print-formatted-puzzle puzzle stream #'getCellValue "~%Puzzle:"))
 
 
-(defun show-domain-sizes (puzzle &optional (stream t))
+(defun show-domain-sizes (puzzle &key (msg nil) (stream t))
   "Print the puzzle, showing the number of possible values for each cell."
+  (if (not (null msg)) (format stream "~a~%" msg))
   (print-formatted-puzzle puzzle stream #'getCellDomainSize "~%Domain Sizes:"))
 
 
-(defun show-constraints (puzzle &optional (stream t))
+(defun show-constraints (puzzle &key (msg nil) (stream t))
   "Print the puzzle, showing each cell's arithmetic constaints."
+  (if (not (null msg)) (format stream "~a~%" msg))
   (print-formatted-puzzle puzzle stream #'getCellConstraintLabel "~%Arithmetic Constraints:")
   (print-constraint-list puzzle stream))
 
