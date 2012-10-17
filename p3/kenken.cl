@@ -204,7 +204,7 @@
         t
       (progn
         (format t "domain before: ~a~%" (cell-domain cell))
-        (remove-inconsistent-vals cell puzzle)
+        (if (eql extended-consistency t) (remove-inconsistent-vals cell puzzle))
         
         (format t "domain in-between: ~a~%~%" (cell-domain cell))
         (remove-neighbor-vals (cell-x cell) (cell-y cell) puzzle)
