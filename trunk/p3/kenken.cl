@@ -78,19 +78,52 @@
   "Creates a kenken puzzle with the specified dimensions and sets up subregions
    based on the specified tuples"
   
-  (let ((puzzle (make-puzzle :cells (make-array `(,dimension ,dimension))
-                             :size dimension
-                             :constraints (mapcar #'(lambda (tuple)
-                                                      (make-constraint :outcome (first tuple)
-                                                                       :operation (first (rest tuple))
-                                                                       :region-cells (first (rest (rest tuple)))))
-                                                      tuples))))
+  (if (null (check-puzzle dimension tuples))
+      (progn
+        (format t "Error when creating puzzle!~%")
+        nil)
+    
+    (let ((puzzle (make-puzzle :cells (make-array `(,dimension ,dimension))
+                               :size dimension
+                               :constraints (mapcar #'(lambda (tuple)
+                                                        (make-constraint :outcome (first tuple)
+                                                                         :operation (first (rest tuple))
+                                                                         :region-cells (first (rest (rest tuple)))))
+                                              tuples))))
+      
+      (loop for x from 1 to dimension do
+            (loop for y from 1 to dimension do
+                  (set-cell-at puzzle x y (create-cell puzzle dimension x y))))
+    puzzle)))
 
-    (loop for x from 1 to dimension do
-          (loop for y from 1 to dimension do
-                (set-cell-at puzzle x y (create-cell puzzle dimension x y))))
-    puzzle))
 
+(defun check-puzzle (dimension tuples) 
+  "Do some error checking on a puzzle to make sure it is correctly formed.
+   Need to do this before constructing the actual puzzle object since that 
+   may fail if the puzzle is incorrectly specified."
+  
+  (let ((seen-cells '()))
+    (every #'(lambda (constraint)
+               (let ((outcome (first constraint))
+                     (op (first (rest constraint)))
+                     (cells-list (first (rest (rest constraint)))))
+                 (if (or (not (numberp outcome))
+                         (not (fboundp op)))
+                     nil
+                   (every #'(lambda (coords)
+                              (if (or (not (numberp (first coords)))
+                                      (not (numberp (second coords)))
+                                      (> (first coords) dimension)
+                                      (> (second coords) dimension))
+                                  nil
+                                (progn
+                                  (if (member-equal coords seen-cells)
+                                        nil
+                                    (progn
+                                      (setf seen-cells (cons coords seen-cells))
+                                      t)))))
+                          cells-list))))
+           tuples)))
 
 
 (defun create-cell (puzzle dimension x y)
@@ -144,7 +177,7 @@
   (show-domain-sizes puzzle)
   
   (format t "~%~%Searching...~%~%")
-  (break)
+
   (setf *num-guesses* 0)
 
   (let* ((solutions (if (impossible-puzzle-p puzzle)
@@ -203,18 +236,14 @@
              (null override))
         t
       (progn
-        (format t "domain before: ~a~%" (cell-domain cell))
-        (if (eql extended-consistency t) (remove-inconsistent-vals cell puzzle))
+        (if (eql extended-consistency t) 
+            (remove-inconsistent-vals cell puzzle))
         
-        (format t "domain in-between: ~a~%~%" (cell-domain cell))
         (remove-neighbor-vals (cell-x cell) (cell-y cell) puzzle)
-        (format t "domain after: ~a~%~%" (cell-domain cell))
         (if (all-neighbors-satisfied region-neighbors puzzle) 
-            (progn (setf tmp (calculate-cell cell region-neighbors puzzle))
-              (format t "return from calc is ~a~%" tmp)
-              ;(break)
+            (progn 
+              (setf tmp (calculate-cell cell region-neighbors puzzle))
               (if (equal (length tmp) 1) (setf (cell-domain cell) (first tmp)))))
-          (format t "domain doubleafter: ~a~%~%" (cell-domain cell))
         (if (impossible-puzzle-p puzzle)
             nil
           (if (or (< (length (cell-domain cell)) dom-size)
@@ -229,7 +258,7 @@
 (defun remove-inconsistent-vals (cell puzzle)
   "Remove any values in cell's domain that can't possibly satisfy cell's constraint
    given the remaining possible values in cell's region neighbors."
-  (format t "looking at cell ~a~%" cell)
+
   (let ((outcome (constraint-outcome (cell-constraint cell)))
         (operation (constraint-operation (cell-constraint cell)))
         (possible-vals (region-possible-vals cell puzzle)))
@@ -249,37 +278,28 @@
                                    (constraint-region-cells (cell-constraint cell)) :test #'equal))
          (tmp nil))
     ;;get first cell and put each val in there in front of every possibility, so slowly trim down neighbor list
-    (format t "region neighbors ~a~%" region-neighbors)
     (unless (null region-neighbors)
       (setf tmp (region-possible-vals-helper region-neighbors puzzle)))
-    (format t "answer is ~a~%~%" tmp )
-    tmp
+    tmp))
 
-  ))
+
 (defun region-possible-vals-helper(neighbors puzzle)
-  (format t "neighbors is ~a~%" neighbors)
+  
   (let* ((first-cell (cell-at puzzle (first (first neighbors)) (second (first neighbors))) ))
-    (format t "domain is ~a~%" (cell-domain first-cell))
     (if (eql (length neighbors) 1) 
         (cell-domain first-cell)
     
     (mapcan #'(lambda (dval) 
                   (mapcar #'(lambda (rest-list) (cons dval (if (atom rest-list) (list rest-list) rest-list)))
                     (region-possible-vals-helper (rest neighbors) puzzle))) 
-      (cell-domain first-cell)))
-    )
-  )
-  
+      (cell-domain first-cell)))))
+
+
 (defun test-param-set (outcome val-list operation)
   "Returns true if any permutation of the val-list values evaluate to outcome."
   ;(format t "outcome: ~a val-list ~a operation ~a~%" outcome val-list operation)
   (some #'(lambda (ordering)
-            (progn
-              ;(print (cons operation ordering))
-              ;(print (eval (cons operation ordering)))
-              ;(format t "~%")
-              (equal (eval (cons operation ordering)) outcome)
-            ))
+            (equal (eval (cons operation ordering)) outcome))
        (permutations val-list))) 
   
 
@@ -344,7 +364,7 @@
                                                    nil))
                                 (permutations new-op-list))))
                 (cell-domain cell)))
-    (format t "tmp is ~a~%" tmp)
+
     (dolist (x tmp) 
       (if (not (null x)) 
                     (setf ans 
@@ -366,8 +386,7 @@
   "Removes 'val' from the cell's domain if it exists in the domain."
 
   (setf (cell-domain cell) (remove val (cell-domain cell) :test #'equal))
-  (format t "for cell (~a, ~a) domain is now ~a~%" (cell-x cell) (cell-y cell) (cell-domain cell) )
-  t)
+   t)
 
 
 
@@ -476,19 +495,6 @@
         (format stream "-"))
   (format stream "~%"))
 
-
-(defun check-puzzle (puzzle) 
-  "TODO: do some error checking on a puzzle to make sure it is correctly formed."
-  ;;check if each cell is in a constraint
-  ;;check that no cell is in two constraints
-  ;;true if checked out to be ok
-  (let ((all-constraints (mapcan #'(lambda (c) (copy-list (constraint-region-cells c))) (puzzle-constraints puzzle)))
-        (counter nil))
-    (every #'(lambda (c)
-               (setf counter (count (list (cell-x c) (cell-y c)) all-constraints :test #'equal))
-               (equal counter 1)) (enumerate-cells puzzle))
-   
-  ))
 
 
 (defun make-copy-puzzle (puzzle) 
