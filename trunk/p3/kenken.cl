@@ -97,6 +97,8 @@
     puzzle)))
 
 
+
+
 (defun check-puzzle (dimension tuples) 
   "Do some error checking on a puzzle to make sure it is correctly formed.
    Need to do this before constructing the actual puzzle object since that 
@@ -163,13 +165,13 @@
 
 (defun print-solutions (puzzle &key 
                                (search-heuristic #'first-ambiguous)
-                               (extended-consistency nil))
+                               (extended-consistency? nil))
   "Top level call to KenKen solving algorithm. Start by deducing all values possible,
    then begin guessing and searching for solutions. Will print a list of possible 
    solutions, if any."
   
   (show-constraints puzzle)
-  (every #'(lambda (cell) (propogate-constraints cell puzzle extended-consistency)) 
+  (every #'(lambda (cell) (propogate-constraints cell puzzle extended-consistency?)) 
          (enumerate-cells puzzle))
   
   (format t "~%After constraint propogation the puzzle is:~%")
@@ -182,7 +184,7 @@
 
   (let* ((solutions (if (impossible-puzzle-p puzzle)
                         nil
-                      (search-solutions puzzle search-heuristic extended-consistency)))
+                      (search-solutions puzzle search-heuristic extended-consistency?)))
          (n (length solutions)))
     
     (if (= n 1)
@@ -240,10 +242,14 @@
             (remove-inconsistent-vals cell puzzle))
         
         (remove-neighbor-vals (cell-x cell) (cell-y cell) puzzle)
+        
+        (if (eql extended-consistency t)
         (if (all-neighbors-satisfied region-neighbors puzzle) 
             (progn 
-              (setf tmp (calculate-cell cell region-neighbors puzzle))
+              (setf tmp (calculate-cell-region cell region-neighbors puzzle))
               (if (equal (length tmp) 1) (setf (cell-domain cell) (first tmp)))))
+          (if (all-neighbors-satisfied region-neighbors puzzle)
+              (setf (cell-domain cell) (calculate-cell cell region-neighbors puzzle))))
         (if (impossible-puzzle-p puzzle)
             nil
           (if (or (< (length (cell-domain cell)) dom-size)
@@ -325,23 +331,29 @@
 
 
 
-(defun find-cell-value (cell puzzle)
-  "Check if we can deduce a cell's value by checking that all other cells in its region
-   have been assigned a value."
-  
-  (let* ((region-neighbors (remove `(,(cell-x cell) ,(cell-y cell)) 
-                                   (constraint-region-cells (cell-constraint cell)) :test #'equal)))
-
-    ;if there are no other cell's in the constraint's region, or if all other cells in the region
-    ;have a definite value, or if there is only 1 value in the domain, we can determine this cell's value
-    (if (or (equal (length (cell-domain cell)) 1)
-            (null region-neighbors)
-            (all-neighbors-satisfied region-neighbors puzzle))
-          (calculate-cell cell region-neighbors puzzle)
-      nil)))
       
- 
-(defun calculate-cell (cell n-list puzzle)
+ (defun calculate-cell (cell n-list puzzle)
+  "Called once we know we have enough info to calculate the value for cell.
+   Use its constraint and its neighbors' values to calculate value.
+   NOTE: n-list is a list of region neighbors, not neighbors from rows/cols."
+  
+  (let ((operation (cons (constraint-operation (cell-constraint cell)) '()))
+        (outcome (constraint-outcome (cell-constraint cell)))
+
+        ;loop through all neighbors and add their values to out op-list
+        ;at this point, we know each neighbor has only a single domain value
+        (op-list (mapcan #'(lambda (n-cell)
+                             (copy-list (cell-domain (cell-at puzzle (first n-cell) (second n-cell)))))
+                   n-list)))
+
+    (some #'(lambda (x) (let ((new-op-list (append op-list (cons x '()))))
+                          ;now we have all of the parameter values, we need to try all permuations
+                          (some #'(lambda (perm) (if (equal (eval (append operation perm)) outcome)
+                                                     (list x)
+                                                   nil))
+                                (permutations new-op-list))))
+          (cell-domain cell))))
+(defun calculate-cell-region (cell n-list puzzle)
   "Called once we know we have enough info to calculate the value for cell.
    Use its constraint and its neighbors' values to calculate value.
    NOTE: n-list is a list of region neighbors, not neighbors from rows/cols."
@@ -371,7 +383,6 @@
                       (if (null ans) (list x) (cons x ans)))))
     ans
     ))
-
 
 
 (defun all-neighbors-satisfied (neighbor-list puzzle)
