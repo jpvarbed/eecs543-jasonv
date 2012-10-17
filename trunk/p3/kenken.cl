@@ -196,19 +196,25 @@
   
   (let ((region-neighbors (remove `(,(cell-x cell) ,(cell-y cell)) 
                                   (constraint-region-cells (cell-constraint cell)) :test #'equal))
-        (dom-size (length (cell-domain cell))))
+        (dom-size (length (cell-domain cell)))
+        (tmp nil))
     
     (if (and (equal dom-size 1)
              (null override))
         t
       (progn
-        (remove-neighbor-vals (cell-x cell) (cell-y cell) puzzle)
-        
+        (format t "domain before: ~a~%" (cell-domain cell))
         (remove-inconsistent-vals cell puzzle)
         
+        (format t "domain in-between: ~a~%~%" (cell-domain cell))
+        (remove-neighbor-vals (cell-x cell) (cell-y cell) puzzle)
+        (format t "domain after: ~a~%~%" (cell-domain cell))
         (if (all-neighbors-satisfied region-neighbors puzzle) 
-            (setf (cell-domain cell) (calculate-cell cell region-neighbors puzzle)))
-          
+            (progn (setf tmp (calculate-cell cell region-neighbors puzzle))
+              (format t "return from calc is ~a~%" tmp)
+              ;(break)
+              (if (equal (length tmp) 1) (setf (cell-domain cell) (first tmp)))))
+          (format t "domain doubleafter: ~a~%~%" (cell-domain cell))
         (if (impossible-puzzle-p puzzle)
             nil
           (if (or (< (length (cell-domain cell)) dom-size)
@@ -246,7 +252,7 @@
     (format t "region neighbors ~a~%" region-neighbors)
     (unless (null region-neighbors)
       (setf tmp (region-possible-vals-helper region-neighbors puzzle)))
-    (format t "answer is ~a~%" tmp )
+    (format t "answer is ~a~%~%" tmp )
     tmp
 
   ))
@@ -266,12 +272,12 @@
   
 (defun test-param-set (outcome val-list operation)
   "Returns true if any permutation of the val-list values evaluate to outcome."
-  (format t "outcome: ~a val-list ~a operation ~a~%" outcome val-list operation)
+  ;(format t "outcome: ~a val-list ~a operation ~a~%" outcome val-list operation)
   (some #'(lambda (ordering)
             (progn
-              (print (cons operation ordering))
-              (print (eval (cons operation ordering)))
-              (format t "~%")
+              ;(print (cons operation ordering))
+              ;(print (eval (cons operation ordering)))
+              ;(format t "~%")
               (equal (eval (cons operation ordering)) outcome)
             ))
        (permutations val-list))) 
@@ -327,15 +333,24 @@
         ;at this point, we know each neighbor has only a single domain value
         (op-list (mapcan #'(lambda (n-cell)
                              (copy-list (cell-domain (cell-at puzzle (first n-cell) (second n-cell)))))
-                   n-list)))
+                   n-list))
+        (ans nil)
+        (tmp nil))
 
-    (some #'(lambda (x) (let ((new-op-list (append op-list (cons x '()))))
+    (setf tmp (mapcar #'(lambda (x) (let ((new-op-list (append op-list (cons x '()))))
                           ;now we have all of the parameter values, we need to try all permuations
                           (some #'(lambda (perm) (if (equal (eval (append operation perm)) outcome)
                                                      (list x)
                                                    nil))
                                 (permutations new-op-list))))
-          (cell-domain cell))))
+                (cell-domain cell)))
+    (format t "tmp is ~a~%" tmp)
+    (dolist (x tmp) 
+      (if (not (null x)) 
+                    (setf ans 
+                      (if (null ans) (list x) (cons x ans)))))
+    ans
+    ))
 
 
 
