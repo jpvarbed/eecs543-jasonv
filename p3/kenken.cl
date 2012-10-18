@@ -166,13 +166,14 @@
 
 (defun print-solutions (puzzle &key 
                                (search-heuristic #'first-ambiguous)
-                               (extended-consistency? nil))
+                               (extended-consistency? nil)
+                               (improved-propagation? nil))
   "Top level call to KenKen solving algorithm. Start by deducing all values possible,
    then begin guessing and searching for solutions. Will print a list of possible 
    solutions, if any."
   
   (show-constraints puzzle)
-  (every #'(lambda (cell) (propagate-constraints cell puzzle extended-consistency?)) 
+  (every #'(lambda (cell) (propagate-constraints cell puzzle extended-consistency? improved-propagation?)) 
          (enumerate-cells puzzle))
   
   (format t "~%After constraint propagation the puzzle is:~%")
@@ -185,7 +186,7 @@
 
   (let* ((solutions (if (impossible-puzzle-p puzzle)
                         nil
-                      (search-solutions puzzle search-heuristic extended-consistency?)))
+                      (search-solutions puzzle search-heuristic extended-consistency? improved-propagation?)))
          (n (length solutions)))
     
     (if (= n 1)
@@ -197,8 +198,8 @@
   (values))
 
 
-
-(defun search-solutions (puzzle search-heuristic extended-consistency)  
+ 
+(defun search-solutions (puzzle search-heuristic extended-consistency? improved-propagation?)  
   "Start by guessing a value for an ambiguous cell, and propagate the value searching
    for a solution."
   
@@ -216,13 +217,13 @@
                            (c2 (cell-at puzzle2 (cell-x cell-c) (cell-y cell-c))))
                       (progn
                         (setf (cell-domain c2) (list possible-val))
-                        (if (propagate-constraints c2 puzzle2 extended-consistency t)
-                            (search-solutions puzzle2 search-heuristic extended-consistency)
+                        (if (propagate-constraints c2 puzzle2 extended-consistency? improved-propagation? t)
+                            (search-solutions puzzle2 search-heuristic extended-consistency? improved-propagation?)
                           nil))))
           (cell-domain cell-c))))))
 
 
-(defun propagate-constraints (cell puzzle extended-consistency &optional (override nil))
+(defun propagate-constraints (cell puzzle extended-consistency improved-propagation &optional (override nil))
   "Look at a cell; if it is in a subregion where every other cell in the subregion
    is assigned, calculate its value. Also, remove from its domain all values that have
    been assigned to other cells in its row and column."
@@ -239,6 +240,12 @@
         (if (eql extended-consistency t) 
             (remove-inconsistent-vals cell puzzle))
         
+        (if (eql improved-propagation t)
+            (progn
+              (check-row-neighbor-domains cell puzzle)
+              (check-col-neighbor-domains cell puzzle)))
+
+        
         (remove-neighbor-vals (cell-x cell) (cell-y cell) puzzle)
         
         (if (eql extended-consistency t)
@@ -254,9 +261,65 @@
                   (not (null override)))
               (every #'(lambda (coords) 
                          (propagate-constraints (cell-at puzzle (first coords) (second coords)) 
-                                                puzzle extended-consistency))
+                                                puzzle extended-consistency improved-propagation))
                        (cell-neighbors cell))
             t))))))
+
+
+(defun check-row-neighbor-domains (cell puzzle)
+  "Check if any values can be eliminated from cell's domain based on improved 
+   propagation algorithm."
+  
+  (let ((row (cell-x cell))
+        (y (cell-y cell))
+        (size (puzzle-size puzzle))
+        (all-doms-list '()))         ;list of all cell domains in the cell's row
+    
+    ;combine all domains from the row into one list
+    (loop for i from 1 to size do
+          (if (not (equal i y))
+              (setf all-doms-list (cons (cell-domain (cell-at puzzle row i)) all-doms-list))))
+    
+    ;check if any domain appears n times in the list, where n is the size of the domain
+    (every #'(lambda (dom)
+               (let ((cnt (count dom all-doms-list :test #'equal))
+                     (len (length dom)))
+                 (if (and (equal cnt len)
+                          (> len 1))
+                       (every #'(lambda (val) 
+                                  (remove-domain-val val cell))
+                              dom))
+                 t))
+           all-doms-list))
+    t)     
+                        
+
+(defun check-col-neighbor-domains (cell puzzle)
+   "Check if any values can be eliminated from cell's domain based on improved 
+   propagation algorithm."
+  
+  (let ((col (cell-y cell))
+        (x (cell-x cell))
+        (size (puzzle-size puzzle))
+        (all-doms-list '()))         ;list of all cell domains in the cell's row
+    
+    ;combine all domains from the row into one list
+    (loop for i from 1 to size do
+          (if (not (equal x i))
+              (setf all-doms-list (cons (cell-domain (cell-at puzzle i col)) all-doms-list))))
+    
+    ;check if any domain appears n times in the list, where n is the size of the domain
+    (every #'(lambda (dom)
+               (let ((cnt (count dom all-doms-list))
+                     (len (length dom)))
+                 (if (and (equal cnt len)
+                          (> len 1))
+                     (every #'(lambda (val) 
+                                (remove-domain-val val cell))
+                            dom))
+                 t))
+           all-doms-list))
+  t)
 
 
 (defun remove-inconsistent-vals (cell puzzle)
@@ -330,7 +393,7 @@
 
 
       
- (defun calculate-cell (cell n-list puzzle)
+(defun calculate-cell (cell n-list puzzle)
   "Called once we know we have enough info to calculate the value for cell.
    Use its constraint and its neighbors' values to calculate value.
    NOTE: n-list is a list of region neighbors, not neighbors from rows/cols."
@@ -351,6 +414,8 @@
                                                    nil))
                                 (permutations new-op-list))))
           (cell-domain cell))))
+
+
 (defun calculate-cell-region (cell n-list puzzle)
   "Called once we know we have enough info to calculate the value for cell.
    Use its constraint and its neighbors' values to calculate value.
@@ -379,8 +444,7 @@
       (if (not (null x)) 
                     (setf ans 
                       (if (null ans) (list x) (cons x ans)))))
-    ans
-    ))
+    ans))
 
 
 (defun all-neighbors-satisfied (neighbor-list puzzle)
