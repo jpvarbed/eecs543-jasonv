@@ -1,7 +1,7 @@
 SETUP: load auxfns.lisp and kenken.cl
 
 	**Each of our four print-solutions test were run with first-ambiguous,
-	  mrv-ambiguous, and extended-consistency. We were sure that each 
+	  mrv-ambiguous, and extended-consistency, and improve propragation We were sure that each 
   	  resulted in the same puzzle solutions.
 
 
@@ -160,7 +160,7 @@ Test 7: test extended-consistency
 					(3 - ((3 1) (3 2))) (2 / ((4 1) (4 2))) 
 					(2 - ((4 3) (4 4))))))
 
-		(EVERY #'(LAMBDA (CELL) (PROPAGATE-CONSTRAINTS CELL 4PUZ nil)) (ENUMERATE-CELLS 4PUZ))
+		(EVERY #'(LAMBDA (CELL) (PROPAGATE-CONSTRAINTS CELL 4PUZ nil nil)) (ENUMERATE-CELLS 4PUZ))
 
 		(show-puzzle 4puz)
 
@@ -172,7 +172,7 @@ Test 7: test extended-consistency
 					(3 - ((3 1) (3 2))) (2 / ((4 1) (4 2))) 
 					(2 - ((4 3) (4 4))))))
 
-		(EVERY #'(LAMBDA (CELL) (PROPAGATE-CONSTRAINTS CELL 4PUZ t) (ENUMERATE-CELLS 4PUZ))
+		(EVERY #'(LAMBDA (CELL) (PROPAGATE-CONSTRAINTS CELL 4PUZ t nil)) (ENUMERATE-CELLS 4PUZ))
 
 		(show-puzzle 4puz)
 
