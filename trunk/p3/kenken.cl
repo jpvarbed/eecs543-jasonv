@@ -668,4 +668,3 @@
                   (permutations
                    (remove e bag :count 1 :test #'eq))))
       bag)))
-
