@@ -1,12 +1,3 @@
-append([],L,L).
-append([H|T],L,[H|R]):- append(T,L,R).
-makelist1(First, Rest, List):- List = [First |Rest].
-makelist2(First, Rest, [First |Rest]).
-memb1(Item, List) :-append(_,[Item | _], List).
-del( X, [X|Tail], Tail).
-del(X, [Y |Tail], [Y |Tail1]) :- del(X, Tail, Tail1).
-memb2(Item, List) :- del(Item, List, _).
-%sublist(S, L) :- app(L1, L2, L), app(S, L3, L2).
 %Task 1
 prime(1).
 prime(2).
@@ -36,7 +27,7 @@ build_p_list(X, Y, L):- Y>0,
 %1st-poison left of wine
 %2nd -ahead not at ends, different on either side X
 %3rd- all different size, smallest, largest have no poison X
-poisonToLeft(_,6).
+poisonToLeft(_,7).
 poisonToLeft(Bottles, Index):-
 	nth0(Index, Bottles, W),
 	W = wine,
@@ -58,16 +49,6 @@ herm(Bottles, Smallest, Largest):-
 	not(L = poison),
 	not(S = poison),
 	%rule # 1
-	/*W1 = wine,
-	W2 = wine,
-	nth0(W1P, Bottles, W1),
-	nth0(W2P, Bottles, W2),
-	nth0(P1P, Bottles, P1),
-	nth0(P2P, Bottles, P2),
-	P1 = poison,
-	P2 = poison,
-        W1P is P1P + 1,
-	W2P is P2P + 1,*/
 	poisonToLeft(Bottles, 1),
 	%rule #4
 	B2 = B6,
@@ -75,18 +56,129 @@ herm(Bottles, Smallest, Largest):-
 	not(B1 = B7),
 	not(B1 = ahead),
 	not(B7 = ahead).
-pairdiffelements(Set, Pairs):-goAll(0, 0, Set, Pairs).
-goAll(I, length(Set), Set, Pairs):-I2 is I+1,
+%pairdiffelements(Set, Pairs):-goAll(0, 0, Set, Pairs).
+pairdiffelements(Set,Pairs):-matchAll(Set, Set, Pairs).
+
+matchAll([E|_], All, [L1, L2|[]]):-
+	L1 = E,
+	matchSecond(L1, L2, All).
+
+matchAll([_|Set], All, Pairs):-
+	matchAll(Set, All, Pairs).
+
+matchSecond(L1, L2, [E|_]):-
+	match(L1, L2, E).
+matchSecond(L1, L2, [_|Elts]):-
+	matchSecond(L1, L2, Elts).
+match(L1, L2, E):-
+	not(L1 = E),
+	L2 = E.
+
+goAll(0, 0, Set, _):-
+	goAll(1, 2, Set, []).
+goAll(L, _, Set, Pairs):-proper_length(Set, L),
+	proper_length(Pairs, L2),
+	L2 > 0.
+goAll(I, X, Set, Pairs):-
+	write('X is '), write(X),
+	proper_length(Set, L),
+	X = L + 1,
+	write('next loop'),
+	I2 is I+1,
 	J2 is I2+1,
+	write(' I2 '), write(I2), write(' J2 '), write(J2), nl,
 	goAll(I2, J2, Set, Pairs).
-goAll(I, J, Set, [NewPair|Pairs]):-
-	nth0(I, Set, EltI),
-	nth0(J, Set, EltJ),
+goAll(I, J, Set, Pairs):-
+	proper_length(Set, L),
+	J < L + 1,
+	nth1(I, Set, EltI),
+	nth1(J, Set, EltJ),
 	NewPair = [EltI, EltJ],
+	member(NewPair, Pairs),
 	J2 is J+1,
-	goAll(I, J2, Set, [NewPair|Pairs]).
-%solver(Bottles, Smallest, Largest):-
+	write('J2 is '), write(J2), write(' Pairs is '), write(Pairs), nl,
+	goAll(I, J2, Set, Pairs).
 %Task 4 A water jug
+%T is three, F is five, E is eight
+%3 bottle
+
+oper([T, F, E], [NT, F, NE], Action):-
+	Left is 3 - T, Left >= E, Left > 0, E > 0,
+	NT is T + E, NE = 0,
+	Action = 'Empty 8-quart into 3-quart'.
+oper([T, F, E], [NT, F, NE], Action):-
+	Left is 3 - T, Left < E, Left > 0, E > 0,
+	NT is 3, NE is E - Left,
+	Action = 'Fill 3-quart from 8-quart'.
+oper([T, F, E], [NT, NF, E], Action):-
+	Left is 3 - T, Left >= F, Left > 0, F > 0,
+	NT is T + F, NF = 0,
+	Action = 'Empty 5-quart into 3-quart'.
+oper([T, F, E], [NT, NF, E], Action):-
+	Left is 3 - T, Left < F, Left > 0, F > 0,
+	NT = 3, NF is F - Left,
+	Action = 'Fill 3-quart from 5-quart'.
+
+%into 5 bottle
+oper([T,F, E], [T, NF, NE], Action):-
+	Left is 5 - F, Left >= E, Left > 0, E > 0,
+	NE is 0, NF is F + E,
+	Action = 'Empty 8-quart into 5-quart'.
+oper([T, F, E], [T, NF,NE], Action):-
+	Left is 5 - F, Left < E, Left > 0, E > 0,
+	NF = 5, NE is E - Left,
+	Action = 'Fill 5-quart from 8-quart'.
+oper([T, F, E], [NT, NF, E], Action):-
+	Left is 5 - F, Left >= T, Left > 0, T > 0,
+	NT = 0,	NF is T + F,
+	Action = 'Empty 3-quart into 5-quart'.
+oper([T, F, E], [NT, NF, E], Action):-
+	Left is 5 - F, Left < T, Left > 0, T > 0,
+	NF = 5, NT is 3 - Left,
+	Action = 'Fill 5-quart from 3-quart'.
+
+%into 8
+oper([T, F, E], [T, NF, NE], Action):-
+	Left is 8 - E, Left < F, Left > 0, F > 0,
+	NE = 8, NF is F - Left,
+	Action = 'Fill 8-quart from 5-quart'.
+oper([T,F, E], [T, NF, NE], Action):-
+	Left is 8 - E, Left >= F, Left > 0, F > 0,
+	NE is F + E, NF = 0,
+	Action = 'Empty 5-quart into 8-quart'.
+oper([T, F, E], [NT, F, NE], Action):-
+	Left is 8 - E, Left >= T, Left > 0, T > 0,
+	NE is E + T, NT = 0,
+	Action = 'Empty 3-quart into 8-quart'.
+oper([T, F, E], [NT, F, NE], Action):-
+	Left is 8 - E, Left < T, Left > 0, T > 0,
+	NT is T - Left, NE = 8,
+	Action = 'Fill 8-quart from 3-quart'.
+
+printPath([]).
+printPath([First|Rest]):- write(First),	nl, printPath(Rest).
+waterjug(Start, Goal):- solve(Start, [], [], Goal).
+
+solve(Goal, Path, _, Goal):- write('Solution is'), nl,
+	reverse(Path, RPath),
+	printPath(RPath).
+
+solve(State, Path, GStack, Goal):-
+	not(State = Goal),
+	oper(State, NewState, Action),
+	not(member(NewState,GStack)),
+	solve(NewState, [Action|Path], [NewState|GStack], Goal).
+
+
+
+
+
+
+
+
+
+
+
 
 
 
