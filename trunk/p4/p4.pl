@@ -1,6 +1,4 @@
 %Task 1
-prime(1).
-prime(2).
 prime(X):-Y is floor(sqrt(X)),
 	isprime(X, Y).
 isprime(_, 1).
@@ -10,7 +8,7 @@ isprime(X, Y) :-
 	isprime(X, Y1).
 
 %task 2
-primesto(X, L):-write('beg'),nl,build_p_list(X, X, L).
+primesto(X, L):-build_p_list(X, X, L).
 build_p_list(_, 0, []).
 build_p_list(X, Y, [Y|L]):- Y > 0,
 	prime(Y),
@@ -56,16 +54,13 @@ herm(Bottles, Smallest, Largest):-
 	not(B1 = B7),
 	not(B1 = ahead),
 	not(B7 = ahead).
-%pairdiffelements(Set, Pairs):-goAll(0, 0, Set, Pairs).
+%second part of task 3
 pairdiffelements(Set,Pairs):-matchAll(Set, Set, Pairs).
-
 matchAll([E|_], All, [L1, L2|[]]):-
 	L1 = E,
 	matchSecond(L1, L2, All).
-
 matchAll([_|Set], All, Pairs):-
 	matchAll(Set, All, Pairs).
-
 matchSecond(L1, L2, [E|_]):-
 	match(L1, L2, E).
 matchSecond(L1, L2, [_|Elts]):-
@@ -74,34 +69,9 @@ match(L1, L2, E):-
 	not(L1 = E),
 	L2 = E.
 
-goAll(0, 0, Set, _):-
-	goAll(1, 2, Set, []).
-goAll(L, _, Set, Pairs):-proper_length(Set, L),
-	proper_length(Pairs, L2),
-	L2 > 0.
-goAll(I, X, Set, Pairs):-
-	write('X is '), write(X),
-	proper_length(Set, L),
-	X = L + 1,
-	write('next loop'),
-	I2 is I+1,
-	J2 is I2+1,
-	write(' I2 '), write(I2), write(' J2 '), write(J2), nl,
-	goAll(I2, J2, Set, Pairs).
-goAll(I, J, Set, Pairs):-
-	proper_length(Set, L),
-	J < L + 1,
-	nth1(I, Set, EltI),
-	nth1(J, Set, EltJ),
-	NewPair = [EltI, EltJ],
-	member(NewPair, Pairs),
-	J2 is J+1,
-	write('J2 is '), write(J2), write(' Pairs is '), write(Pairs), nl,
-	goAll(I, J2, Set, Pairs).
-%Task 4 A water jug
+%Task 4
 %T is three, F is five, E is eight
 %3 bottle
-
 oper([T, F, E], [NT, F, NE], Action):-
 	Left is 3 - T, Left >= E, Left > 0, E > 0,
 	NT is T + E, NE = 0,
