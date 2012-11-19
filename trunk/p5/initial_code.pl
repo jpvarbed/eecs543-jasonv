@@ -1,8 +1,55 @@
-% Student Name:  _PLEASE FILL THIS IN!_
-
+% Student Name:  Jason Varbedian
+%244 in pdf
 % Induction of decision trees (program sketched on Bratko pages 466-468)
-% Below, the sketched program was completed by adding some missing parts 
+% Below, the sketched program was completed by adding some missing parts
+% Task 4
+% need to make show and decide work for trees of all sizes
+decide(example(Class, List), tree(Main, Subtrees)):-
+	%match first with first, holes to holes
+	%find one that works from that tree
+	write(Class), nl, write(List), nl,
+	write(Main), nl,write(Subtrees),
+	findTop(Main, List, Val),
+	nl, write('Answer'), nl,
+	write(Val),
+	getTree(Val, Subtrees, tree(Att, AttList)),
+	nl, write('Att in tree'), write(Att), write(' to match '), write(AttList), nl,
+	getAttrVal(AV, Att, List),
+	write('AV is '), write(AV), nl,
+	match(AV, AttList, Class).
+findTop(Main, [Main=Val|_], Val).
+findTop(Main, [_|Rest], Val):- findTop(Main, Rest, Val).
+getTree(Val, [Val:Tree|_], Tree).
+getTree(Val, [_|Rest], Tree):-getTree(Val, Rest, Tree).
+getAttrVal(AttrVal, Att, [Att=AttrVal|_]).
+getAttrVal(AttrVal, Att, [_|Rest]):-getAttrVal(AttrVal, Att, Rest).
+match(AttrVal, [_|Rest], Class):-match(AttrVal, Rest, Class).
+match(AttrVal, [AttrVal:leaf(Class)|_], Class).
 
+%Task 2
+parseList([]).
+parseList([Val:null]):-
+	tab(9),write(Val),write(' ==> null'), nl.
+%what if not leaf? idk.
+parseList([Val:leaf(Name)|Rest]):-
+	tab(9),
+	write(Val), write(' ==> '), write(Name), nl,
+	parseList(Rest).
+parseTree(Number:null):-
+	tab(3), write(Number), write(' ==> null'), nl.
+parseTree(Val:tree(Att, List)):-
+	tab(3),
+	write(Val), nl,
+	tab(6), write(Att), nl,
+	parseList(List).
+parseBigList([]).
+parseBigList([First|Rest]):-
+	%write('big'),nl, write(First),nl, write('rest'),nl, write(Rest),
+	parseTree(First),
+	parseBigList(Rest).
+show(tree(Att, Rest)) :-
+	write(Att),nl,
+	parseBigList(Rest).
 % Note: This program does not pay any attention to efficiency!
 
      induce_tree( Tree)  :-
@@ -14,10 +61,10 @@
 
 % (1) Tree = null if the example set is empty.
 % (2) Tree = leaf( Class) if all of the examples are of the same class Class.
-% (3) Tree = tree( Attribute, [ Val1 : SubTree1, Val2 : Subtree2, ...]) if examples 
-%     belong to more than one class, 
-%     Attribute is the root of the tree, 
-%     Val1, Val2, ... are Attribute's values, and 
+% (3) Tree = tree( Attribute, [ Val1 : SubTree1, Val2 : Subtree2, ...]) if examples
+%     belong to more than one class,
+%     Attribute is the root of the tree,
+%     Val1, Val2, ... are Attribute's values, and
 %     SubTree1, SubTree2, ... are the corresponding decision subtrees.
 
 % These three cases are handled by the following three clauses:
@@ -29,7 +76,7 @@
    induce_tree( _, [example( Class,_ ) | Examples], leaf( Class))  :-
      not(( member( example( ClassX, _), Examples),           % No other example
            ClassX \== Class)), !.                             % of different class
-   
+
    induce_tree( Attributes, Examples, tree( Attribute, SubTrees))  :-
      choose_attribute( Attributes, Examples, Attribute), !,
      del( Attribute, Attributes, RestAtts),                  % Delete Attribute
@@ -37,7 +84,7 @@
      induce_trees( Attribute, Values, RestAtts, Examples, SubTrees).
 
    induce_tree( _, Examples, leaf( ExClasses))  :-     % No (useful) attribute, leaf with class distr.
-     findall( Class, member( example( Class, _), Examples), ExClasses). 
+     findall( Class, member( example( Class, _), Examples), ExClasses).
 
 % induce_trees( Att, Values, RestAtts, Examples, SubTrees):
 %   induce decision SubTrees for subsets of Examples according to Values of Attribute
@@ -61,28 +108,56 @@
               ExampleSubset).
 
 % satisfy( Object, Description):
-%   defined as in Figure 18.11. 
+%   defined as in Figure 18.11.
 
 satisfy( Object, Conj)  :-
    not(( member( Att = Val, Conj),
          member( Att = ValX, Object),
          ValX \== Val)).
 
-% choose_attribute selects the attribute that discriminates well among the classes. 
-% This involves the impurity criterion. The following clause minimizes the chosen 
-% impurity measure using setof. 
+% choose_attribute selects the attribute that discriminates well among the classes.
+% This involves the impurity criterion. The following clause minimizes the chosen
+% impurity measure using setof.
 % setof will order the available attributes according to increasing impurity
 
-   choose_attribute( Atts, Examples, BestAtt)  :-
+   /*choose_attribute( Atts, Examples, BestAtt)  :-
      setof( Impurity/Att,
             ( member( Att, Atts), impurity1( Examples, Att, Impurity)),
-            [ _/BestAtt | _] ).
+            [ _/BestAtt | _] ).*/
+ choose_attribute(Atts, Examples, BestAtt) :-
+	choose_att(Examples, Atts, BestAtt).
+ choose_att(Examples, [A| Atts], BestAtt):-
+	choose_att(Examples, Atts, A, BestAtt).
+ choose_att(_, [], BestAtt, BestAtt).
+ choose_att(Examples, [A| Atts], Test, BestAtt):-
+	impurity1(Examples, A, Imp1),
+	impurity1(Examples, Test, Imp2),
+	%BestImp is min(Imp1, Imp2), is this bad?impurity1(Examples, Best, BestImp),
+	Imp1 < Imp2,
+	choose_att(Examples, Atts, A, BestAtt).
+ choose_att(Examples, [A| Atts], Test, BestAtt):-
+	impurity1(Examples, A, Imp1),
+	impurity1(Examples, Test, Imp2),
+	Imp1 > Imp2,
+	choose_att(Examples, Atts, Test, BestAtt).
 
+/*
+ choose_attribute( Atts, Examples, BestAtt)  :-
+    bagof( Impurity/Att,
+            ( member( Att, Atts), impurity1( Examples, Att, Impurity)),
+            Bag),
+     %write('Bag is '), write (Bag), nl,
+     %write('Examples are '), write(Examples), nl,
+     %write('Atts are '), write(Atts), nl,
+     %write('choose '),
+     min_member(_/BestAtt, Bag), write(BestAtt), nl.
+
+*/
 % impurity1( Examples, Attribute, Impurity):
-%   implements a chosen impurity measure. 
-%   Impurity is the combined impurity of the subsets of examples after 
+%   implements a chosen impurity measure.
+%   Impurity is the combined impurity of the subsets of examples after
 %   dividing the list Examples according to the values of Attribute.
-%   
+%
 
 impurity1( Exs, Att, Imp)  :-
   attribute( Att, AttVals),
@@ -97,7 +172,7 @@ term_sum( Exs, Att, [Val | Vals], PartSum, Sum)  :-
   findall( C, (member( example(C,Desc), Exs), satisfy( Desc, [Att=Val])), ExClasses),
      % ExClasses = list of the classes (with repetitions) of all the examples with Att=Val
   length( ExClasses, NV), NV > 0, !,
-  findall( P, 
+  findall( P,
            ( bagof( 1, member( _, ExClasses), L), length( L, NVC), P is NVC/NV),
            ClassDistribution),
   gini( ClassDistribution, Gini),
@@ -124,7 +199,7 @@ square_sum( [P | Ps], PartS, S)  :-
 
 %-----------------------------------------
 
-% Figure 18.9  Attribute definitions and examples for learning to 
+% Figure 18.9  Attribute definitions and examples for learning to
 % recognize objects from their silhouettes (from Figure 18.8).
 
 :- dynamic example/2.
@@ -149,6 +224,6 @@ example( key, [ size = small, shape = other, holes = 2]).
 
 
 
-  
+
 
 
