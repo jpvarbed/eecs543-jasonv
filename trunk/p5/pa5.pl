@@ -28,6 +28,7 @@ match(AttrVal, [AttrVal:leaf(Class)|_], Class).
 
 
 %Task 2
+/*
 parseList([]).
 
 parseList([Val:null], Indent) :-
@@ -71,7 +72,50 @@ show(tree(Att, Rest)) :-
     Indent is 3,
 	write(Att),nl,
 	parseBigList(Rest, Indent).
+*/
 
+%Task 2
+show(Tree) :-
+	Indent is 0,
+    show(Tree, Indent).
+
+% Matches a top level tree.
+show(tree(Att,Rest), Indent) :-
+    tab(Indent),
+    write(Att), nl,
+    Indent2 is Indent + 3,
+    %write('Rest: '), write(Rest), nl,
+    show(Rest, Indent2). 
+
+% Matches the last attribute with null subtree of values.
+show([Value:null | []], Indent) :-
+    tab(Indent),
+    write(Value), write(' ==> '), write('null'), nl.
+
+% Matches an attribute value with a null subtree of values.
+show([Value:null | RestVals], Indent) :-
+    tab(Indent),
+    write(Value), write(' ==> '), write('null'), nl,
+    show(RestVals, Indent).
+
+% Matches an attribute value with its subtree of values.
+show([Val:tree(Att,Rest) | RestVals], Indent) :-
+    tab(Indent),
+    write(Val), nl,
+    Indent2 is Indent + 3, 
+    show(tree(Att,Rest), Indent2),
+    show(RestVals, Indent).
+
+% Matches the last leaf in a list of leaves.
+show([Name:leaf(Item) | []], Indent) :-
+    tab(Indent),
+    write(Name), write(' ==> '), write(Item), nl.
+
+% Matches an attribute with its leaf value.
+show([Name:leaf(Item) | RestLeaves], Indent) :-
+    tab(Indent),
+    write(Name), write(' ==> '), write(Item), nl,
+    show(RestLeaves, Indent).
 
 
 
@@ -107,7 +151,7 @@ show(tree(Att, Rest)) :-
            ClassX \== Class)), !.                             % of different class
 
    induce_tree( Attributes, Examples, tree( Attribute, SubTrees))  :-
-     choose_attribute( Attributes, Examples, Attribute), !,
+     choose_attribute( Attributes, Examples, Attribute), !, 
      del( Attribute, Attributes, RestAtts),                  % Delete Attribute
      attribute( Attribute, Values),
      induce_trees( Attribute, Values, RestAtts, Examples, SubTrees).
@@ -155,21 +199,21 @@ satisfy( Object, Conj)  :-
             [ _/BestAtt | _] ).*/
 
 choose_attribute(Atts, Examples, BestAtt) :-
-	choose_att(Examples, Atts, BestAtt).
+    choose_att(Examples, Atts, BestAtt).
  
-choose_att(Examples, [A| Atts], BestAtt):-
+choose_att(Examples, [A | Atts], BestAtt):-
 	choose_att(Examples, Atts, A, BestAtt).
  
 choose_att(_, [], BestAtt, BestAtt).
  
-choose_att(Examples, [A| Atts], Test, BestAtt):-
+choose_att(Examples, [A | Atts], Test, BestAtt):-
 	impurity1(Examples, A, Imp1),
 	impurity1(Examples, Test, Imp2),
 	%BestImp is min(Imp1, Imp2), is this bad?impurity1(Examples, Best, BestImp),
-	Imp1 < Imp2,
+	Imp1 =< Imp2,
 	choose_att(Examples, Atts, A, BestAtt).
  
-choose_att(Examples, [A| Atts], Test, BestAtt):-
+choose_att(Examples, [A | Atts], Test, BestAtt):-
 	impurity1(Examples, A, Imp1),
 	impurity1(Examples, Test, Imp2),
 	Imp1 > Imp2,
@@ -242,6 +286,24 @@ square_sum( [P | Ps], PartS, S)  :-
 attribute( size, [ small, large]).
 attribute( shape, [ long, compact, other]).
 attribute( holes, [ none, 1, 2, 3, many]).
+
+% Tree with additional attribute.
+/*
+attribute( dummy, [ a, b, c, d]).
+example( nut, [ size = small, shape = compact, holes = 1, dummy = d]).
+example( screw, [ size = small, shape = long, holes = none, dummy = c]).
+example( key, [ size = small, shape = long, holes = 1, dummy = b]).
+example( nut, [ size = small, shape = compact, holes = 1, dummy = c]).
+example( key, [ size = large, shape = long, holes = 1, dummy = b]).
+example( screw, [ size = small, shape = compact, holes = none, dummy = a]).
+example( nut, [ size = small, shape = compact, holes = 1, dummy = a]).
+example( pen, [ size = large, shape = long, holes = none, dummy = d]).
+example( scissors, [ size = large, shape = long, holes = 2, dummy = c]).
+example( pen, [ size = large, shape = long, holes = none, dummy = c]).
+example( scissors, [ size = large, shape = other, holes = 2, dummy = d]).
+example( key, [ size = small, shape = other, holes = 2, dummy = a]).
+*/
+
 
 % Tree from spec
 
