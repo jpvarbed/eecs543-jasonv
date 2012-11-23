@@ -1,0 +1,40 @@
+With no examples:
+
+?- induce_tree(T), show(T).
+null
+T = null.
+
+
+Sample tree from spec: 
+
+?- induce_tree(T), show(T).
+holes
+   none
+      size
+         small ==> screw
+         large ==> pen
+   1
+      shape
+         long ==> key
+         compact ==> nut
+         other ==> null
+   2
+      size
+         small ==> key
+         large ==> scissors
+   3 ==> null
+   many ==> null
+
+
+
+
+big tree - 
+tree(holes,[none:tree(something,[something2:tree(anotherthing, [thingA:leaf(b), thingB:leaf(b)])])])
+    
+
+
+
+
+
+
+
