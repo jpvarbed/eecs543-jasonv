@@ -6,22 +6,26 @@
 decide(example(Class, List), tree(Main, Subtrees)):-
 	%match first with first, holes to holes
 	%find one that works from that tree
-	write(Class), nl, write(List), nl,
-	write(Main), nl,write(Subtrees),
+    %write(Class), nl, write(List), nl,
+    %write(Main), nl,write(Subtrees),
 	findTop(Main, List, Val),
-	nl, write('Answer'), nl,
-	write(Val),
+    %nl, write('Answer'), nl,
+    %write(Val),
 	getTree(Val, Subtrees, tree(Att, AttList)),
-	nl, write('Att in tree'), write(Att), write(' to match '), write(AttList), nl,
+    %nl, write('Att in tree'), write(Att), write(' to match '), write(AttList), nl,
 	getAttrVal(AV, Att, List),
-	write('AV is '), write(AV), nl,
+    %write('AV is '), write(AV), nl,
 	match(AV, AttList, Class).
+
 findTop(Main, [Main=Val|_], Val).
 findTop(Main, [_|Rest], Val):- findTop(Main, Rest, Val).
+
 getTree(Val, [Val:Tree|_], Tree).
 getTree(Val, [_|Rest], Tree):-getTree(Val, Rest, Tree).
+
 getAttrVal(AttrVal, Att, [Att=AttrVal|_]).
 getAttrVal(AttrVal, Att, [_|Rest]):-getAttrVal(AttrVal, Att, Rest).
+
 match(AttrVal, [_|Rest], Class):-match(AttrVal, Rest, Class).
 match(AttrVal, [AttrVal:leaf(Class)|_], Class).
 
@@ -84,13 +88,7 @@ show(tree(Att,Rest), Indent) :-
     tab(Indent),
     write(Att), nl,
     Indent2 is Indent + 3,
-    %write('Rest: '), write(Rest), nl,
     show(Rest, Indent2). 
-
-% Matches the last attribute with null subtree of values.
-show([Value:null | []], Indent) :-
-    tab(Indent),
-    write(Value), write(' ==> '), write('null'), nl.
 
 % Matches an attribute value with a null subtree of values.
 show([Value:null | RestVals], Indent) :-
@@ -106,10 +104,7 @@ show([Val:tree(Att,Rest) | RestVals], Indent) :-
     show(tree(Att,Rest), Indent2),
     show(RestVals, Indent).
 
-% Matches the last leaf in a list of leaves.
-show([Name:leaf(Item) | []], Indent) :-
-    tab(Indent),
-    write(Name), write(' ==> '), write(Item), nl.
+show([], _Indent).
 
 % Matches an attribute with its leaf value.
 show([Name:leaf(Item) | RestLeaves], Indent) :-
