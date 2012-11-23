@@ -3,31 +3,25 @@
 
 
 % Task 4
-decide(example(Class, List), tree(Main, Subtrees)):-
-	%match first with first, holes to holes
-	%find one that works from that tree
-    %write(Class), nl, write(List), nl,
-    %write(Main), nl,write(Subtrees),
-	findTop(Main, List, Val),
-    %nl, write('Answer'), nl,
-    %write(Val),
-	getTree(Val, Subtrees, tree(Att, AttList)),
-    %nl, write('Att in tree'), write(Att), write(' to match '), write(AttList), nl,
-	getAttrVal(AV, Att, List),
-    %write('AV is '), write(AV), nl,
-	match(AV, AttList, Class).
+decide(example(Class, List), tree(Node, Subtrees)):-
+    getAttrVal(Val,Node,List),
+    getSubTree(Val,Subtrees,Tree),
+    decide(example(Class,List), Tree).
 
-findTop(Main, [Main=Val|_], Val).
-findTop(Main, [_|Rest], Val):- findTop(Main, Rest, Val).
+decide(example(Class,_List), leaf(Class)).
 
-getTree(Val, [Val:Tree|_], Tree).
-getTree(Val, [_|Rest], Tree):-getTree(Val, Rest, Tree).
+% Decide which subtree to traverse next.
+getSubTree(Val, [Val:Tree|_], Tree).
+getSubTree(Val, [_|Rest], Tree) :- getSubTree(Val, Rest, Tree).
 
+% Find the example's attribute value for the current node we are at
+% in the tree.
 getAttrVal(AttrVal, Att, [Att=AttrVal|_]).
-getAttrVal(AttrVal, Att, [_|Rest]):-getAttrVal(AttrVal, Att, Rest).
+getAttrVal(AttrVal, Att, [_|Rest]) :- getAttrVal(AttrVal, Att, Rest).
 
-match(AttrVal, [_|Rest], Class):-match(AttrVal, Rest, Class).
-match(AttrVal, [AttrVal:leaf(Class)|_], Class).
+
+
+
 
 
 
