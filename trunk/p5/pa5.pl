@@ -2,7 +2,9 @@
 % 244 in pdf
 
 
-% Task 4
+/*******************************************************************************
+ * Task 4
+ ******************************************************************************/
 decide(example(Class, List), tree(Node, Subtrees)):-
     getAttrVal(Val,Node,List),
     getSubTree(Val,Subtrees,Tree),
@@ -22,57 +24,9 @@ getAttrVal(AttrVal, Att, [_|Rest]) :- getAttrVal(AttrVal, Att, Rest).
 
 
 
-
-
-
-%Task 2
-/*
-parseList([]).
-
-parseList([Val:null], Indent) :-
-	tab(Indent),write(Val),write(' ==> null'), nl.
-
-parseList([Val:leaf(Name)], Indent) :-
-    tab(Indent), 
-    write(Val), write(' ==> '), write(Name), nl.
-
-%what if not leaf? idk.
-parseList([Val:leaf(Name)|Rest], Indent) :-
-	tab(Indent),
-	write(Val), write(' ==> '), write(Name), nl,
-	parseList(Rest, Indent).
-
-
-parseTree(Number:null, Indent) :-
-	tab(Indent), write(Number), write(' ==> null'), nl.
-
-parseTree(Val:tree(Att, List), Indent) :-
-	tab(Indent),
-	write(Val), nl,
-    Indent2 is Indent + 3,
-	tab(Indent2), write(Att), nl,
-    Indent3 is Indent2 + 3,
-	parseList(List, Indent3).
-
-
-parseBigList([], _Indent).
-
-parseBigList(List, Indent) :-
-    parseList(List, Indent).
-
-parseBigList([First|Rest], Indent) :-
-	%write('big'),nl, write(First),nl, write('rest'),nl, write(Rest),
-	parseTree(First, Indent),
-	parseBigList(Rest, Indent).
-
-
-show(tree(Att, Rest)) :-
-    Indent is 3,
-	write(Att),nl,
-	parseBigList(Rest, Indent).
-*/
-
-%Task 2
+/*******************************************************************************
+ * Task 2
+ ******************************************************************************/
 show(Tree) :-
 	Indent is 0,
     show(Tree, Indent).
@@ -108,16 +62,18 @@ show([Name:leaf(Item) | RestLeaves], Indent) :-
 
 
 
-
+/*******************************************************************************
+ * Original code (with Task 1 modifications).
+ ******************************************************************************/ 
 % Induction of decision trees (program sketched on Bratko pages 466-468)
 % Below, the sketched program was completed by adding some missing parts
 
 % Note: This program does not pay any attention to efficiency!
 
-     induce_tree( Tree)  :-
-        findall( example( Class, Obj), example( Class, Obj), Examples),
-        findall( Att, attribute( Att, _ ), Attributes),
-        induce_tree( Attributes, Examples, Tree).
+induce_tree( Tree)  :-
+    findall( example( Class, Obj), example( Class, Obj), Examples),
+    findall( Att, attribute( Att, _ ), Attributes),
+    induce_tree( Attributes, Examples, Tree).
 
 % The form of the tree depends on the following three cases:
 
@@ -133,41 +89,77 @@ show([Name:leaf(Item) | RestLeaves], Indent) :-
 
 % induce_tree( Attributes, Examples, Tree)
 
-   induce_tree( _, [], null)  :-  !.
+induce_tree( _, [], null)  :-  !.
 
-   induce_tree( _, [example( Class,_ ) | Examples], leaf( Class))  :-
-     not(( member( example( ClassX, _), Examples),           % No other example
-           ClassX \== Class)), !.                             % of different class
+induce_tree( _, [example( Class,_ ) | Examples], leaf( Class))  :-
+    not(( member( example( ClassX, _), Examples),           % No other example
+       ClassX \== Class)), !.                             % of different class
 
-   induce_tree( Attributes, Examples, tree( Attribute, SubTrees))  :-
-     choose_attribute( Attributes, Examples, Attribute), !, 
-     del( Attribute, Attributes, RestAtts),                  % Delete Attribute
-     attribute( Attribute, Values),
-     induce_trees( Attribute, Values, RestAtts, Examples, SubTrees).
+induce_tree( Attributes, Examples, tree( Attribute, SubTrees))  :-
+    choose_attribute( Attributes, Examples, Attribute), !, 
+    del( Attribute, Attributes, RestAtts),                  % Delete Attribute
+    attribute( Attribute, Values),
+    induce_trees( Attribute, Values, RestAtts, Examples, SubTrees).
 
-   induce_tree( _, Examples, leaf( ExClasses))  :-     % No (useful) attribute, leaf with class distr.
-     findall( Class, member( example( Class, _), Examples), ExClasses).
+induce_tree( _, Examples, leaf( ExClasses))  :-     % No (useful) attribute, leaf with class distr.
+    filterSet(Examples,MostFrequent),
+    MostFrequent = example(ExClasses,_).
+
+% ORIGINAL
+%induce_tree( _, Examples, leaf( ExClasses))  :-     % No (useful) attribute, leaf with class distr.
+%     findall( Class, member( example( Class, _), Examples), ExClasses). 
+
 
 % induce_trees( Att, Values, RestAtts, Examples, SubTrees):
 %   induce decision SubTrees for subsets of Examples according to Values of Attribute
 
-   induce_trees( _, [], _, _, [] ).     % No attributes, no subtrees
+induce_trees( _, [], _, _, [] ).     % No attributes, no subtrees
 
-   induce_trees( Att, [Val1 | Vals], RestAtts, Exs, [Val1 : Tree1 | Trees])  :-
-     attval_subset( Att = Val1, Exs, ExampleSubset),
-     induce_tree( RestAtts, ExampleSubset, Tree1),
-     induce_trees( Att, Vals, RestAtts, Exs, Trees).
+induce_trees( Att, [Val1 | Vals], RestAtts, Exs, [Val1 : Tree1 | Trees])  :-
+    attval_subset( Att = Val1, Exs, ExampleSubset),
+    %    write('Before: '), write(ExampleSubset), nl,
+    %filterSet(ExampleSubset,MostFrequent),
+    %MostFrequentL = [MostFrequent],
+    %write('After: '), write(MostFrequentL), nl,
+    %induce_tree( RestAtts, MostFrequentL, Tree1),
+    induce_tree( RestAtts, ExampleSubset, Tree1),
+    induce_trees( Att, Vals, RestAtts, Exs, Trees).
 
-   del(Item, BigList, SmallList) :- delete(BigList, Item, SmallList).
+del(Item, BigList, SmallList) :- delete(BigList, Item, SmallList).
 
 % attval_subset( Attribute = Value, Examples, Subset):
 %   Subset is the subset of examples in Examples that satisfy the condition Attribute = Value:
 
-   attval_subset( AttributeValue, Examples, ExampleSubset)  :-
-     findall( example( Class, Obj),
-              ( member( example( Class, Obj), Examples),
-                satisfy( Obj, [ AttributeValue])),
-              ExampleSubset).
+attval_subset( AttributeValue, Examples, ExampleSubset)  :-
+    findall( example( Class, Obj), 
+        ( member( example( Class, Obj), Examples),
+        satisfy( Obj, [ AttributeValue])),
+        ExampleSubset).
+
+
+filterSet(Examples,Elt) :-
+    findMaxCnt(Examples,_Max,Elt), !.
+
+findMaxCnt([],0,_Elt).
+
+findMaxCnt([Ex|Examples],Max,Elt) :-
+    countOccurances([Ex|Examples],Ex,Cnt),
+    findMaxCnt(Examples,SubMax,_SubElt),
+    Cnt > SubMax,
+    Elt = Ex,
+    Max is Cnt.
+
+findMaxCnt([Ex|Examples],Max,Elt) :-
+    countOccurances([Ex|Examples],Ex,Cnt),
+    findMaxCnt(Examples,SubMax,SubElt),
+    Cnt =< SubMax,
+    Elt = SubElt,
+    Max is SubMax.
+
+countOccurances([],_X,0).
+countOccurances([X|R],X,Y) :- countOccurances(R,X,Z), Y is 1+Z.
+countOccurances([X1|R],X,Z) :- X1 \= X, countOccurances(R,X,Z).
+
 
 % satisfy( Object, Description):
 %   defined as in Figure 18.11.
