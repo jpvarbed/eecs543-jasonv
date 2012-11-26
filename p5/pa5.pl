@@ -31,6 +31,11 @@ show(Tree) :-
 	Indent is 0,
     show(Tree, Indent).
 
+% Matches a tree consisting only of a single leaf.
+show(leaf(Item), Indent) :-
+    tab(Indent),
+    write(Item), nl.
+
 % Matches a top level tree.
 show(tree(Att,Rest), Indent) :-
     tab(Indent),
@@ -190,7 +195,6 @@ choose_att(_, [], BestAtt, BestAtt).
 choose_att(Examples, [A | Atts], Test, BestAtt):-
 	impurity1(Examples, A, Imp1),
 	impurity1(Examples, Test, Imp2),
-	%BestImp is min(Imp1, Imp2), is this bad?impurity1(Examples, Best, BestImp),
 	Imp1 =< Imp2,
 	choose_att(Examples, Atts, A, BestAtt).
  
@@ -300,7 +304,6 @@ example( scissors, [ size = large, shape = long, holes = 2]).
 example( pen, [ size = large, shape = long, holes = none]).
 example( scissors, [ size = large, shape = other, holes = 2]).
 example( key, [ size = small, shape = other, holes = 2]).
-
 
 
 % Smaller tree with height = 2
