@@ -1,36 +1,289 @@
-With no examples:
-
-?- induce_tree(T), show(T).
-null
-T = null.
+EECS 543 - Programming Assignment 5 
+Jason Varbedian (jpvarbed), Dan Jonik (djonik)
 
 
-Sample tree from spec: 
+================================================================================
+Task 1
+================================================================================
+The initial code implemented choose_attribute by ordering the attributes in 
+order of their 'impurity', then selecting the attribute at the front of the 
+ordered list. While this works, it does unnecessary work by sorting all of the
+attribute impurities. 
 
-?- induce_tree(T), show(T).
-holes
-   none
-      size
-         small ==> screw
-         large ==> pen
-   1
-      shape
-         long ==> key
-         compact ==> nut
-         other ==> null
-   2
-      size
-         small ==> key
-         large ==> scissors
-   3 ==> null
-   many ==> null
+Our implementation of choose_attribute is an iterative solution that goes through
+all possible attributes and finds the one with minimum impurity. This is an 
+O(n) operation, which is more efficient than doing a sorting operation which
+is commonly O(NlogN) or O(N^2).
 
 
 
+================================================================================
+Task 2
+================================================================================
 
-big tree - 
-tree(holes,[none:tree(something,[something2:tree(anotherthing, [thingA:leaf(b), thingB:leaf(b)])])])
-    
+1) Tree induced with no examples:
+
+	?- induce_tree(T), show(T).
+	null
+	T = null.
+
+
+2) Sample tree from spec: 
+
+	?- induce_tree(T), show(T).
+	holes
+	   none
+	      size
+		 small ==> screw
+		 large ==> pen
+	   1
+	      shape
+		 long ==> key
+		 compact ==> nut
+		 other ==> null
+	   2
+	      size
+		 small ==> key
+		 large ==> scissors
+	   3 ==> null
+	   many ==> null
+
+
+3) Hard-coded tree with height = 6
+	
+	?- show(tree(holes,[none:tree(something,[something2:tree(anotherthing, 		[thingA:leaf(b), thingB:leaf(b)])])])).
+	holes
+	   none
+	      something
+		 something2
+		    anotherthing
+		       thingA ==> b
+		       thingB ==> b
+
+
+4) Tree from part 5 with washer added 
+
+	?- induce_tree(T), show(T).
+	holes
+	   none
+	      size
+		 small ==> screw
+		 large ==> pen
+	   1
+	      shape
+		 long ==> key
+		 compact
+		    size
+		       small ==> nut
+		       large ==> null
+		 other ==> null
+	   2
+	      size
+		 small ==> key
+		 large ==> scissors
+	   3 ==> null
+	   many ==> null
+
+
+5) Small tree with height = 2
+
+	?- induce_tree(T), show(T).
+	size
+	   small ==> screw
+	   large ==> pen
+
+
+6) Tree induced with one example (tree consists only of a leaf)
+
+	?- induce_tree(T), show(T).
+	pen
+	T = leaf(pen).
+
+
+
+================================================================================
+Task 3
+================================================================================
+
+Exercise 18.1:
+Calculate the entropy of the whole example set with respect to class, the residual
+information for attributes 'size' and 'holes', the corresponding information gains
+and gain ratios. Estimate the probabilities needed in the calculations simply by
+the relative frequencies (p(nut) = 3/12 or p(nut|holes=1) = 3/5).
+
+
+Calculate values for (attribute = shape, size, and holes):
+	residual information
+	information gain
+	gain ratiox`
+
+Avg amount of information I needed to classify an object (entropy?):
+I = - sum( p(c) * log2(p(c)) )
+	c = classes, p(c) = probability that object S is in class c
+
+
+residual info:
+Is = -sum(p(v)) * sum( p(c|v) * log2(p(c|v)) )
+	v = values of A, p(v) = probability of v in S
+	p(c|V) = is conditional probability of class c given A has value v
+
+
+information gain ratio (amount of infomration I(A) to determine value of attr A):
+	I(A) = -sum( p(v) * log2(p(v)) )
+
+gain ratio:
+	GR(A) = (Gain(A)/I(A)) = (I-Ires(A))/I(A)
+
+	**attribute to choose has highest gain ratio**
+	
+
+
+What attribute would be used for splitting at the top of the tree if you used 
+gain ratio instead of the Gini measure?
+
+
+
+
+
+================================================================================
+Task 4
+================================================================================
+1) Previously-seen examples: decide was able to properly classify all of the
+previously-seen examples (not all are shown below).
+
+	?- induce_tree(T), decide(example(Classification[size=large,shape=compact,holes=1]), T).
+	Classification = nut .
+
+	?- induce_tree(T), decide(example(Classification, [size=large,shape=long,holes=2]), T).
+	Classification = scissors .
+
+	?- induce_tree(T), decide(example(Classification, [size=small,shape=other,holes=2]), T).
+	Classification = key .
+
+
+2) Learning Algorithm Testing
+
+We induced the decision tree with 5 subsets of the original set of examples.
+For each test, the size of the initial example subset is given, as well as the
+accuracy of correctly classifying the rest of the examples not used to induce the 
+tree.
+
+Test 1:  induced with 8 examples, tested with other 4, accuracy = 25%
+Test 2:  induced with 7 examples, tested with other 5, accuracy = 40%
+Test 3:  induced with 10 examples, tested with other 2, accuracy = 50%
+Test 4:  induced with 6 examples, tested with other 6, accuracy = 67%
+Test 5:  induced with 9 examples, tested with other 3, accuracy = 67%
+
+As our data shows, the learning approach has somewhat low levels of successfully
+classifying previously unseen objects. The number of initial examples isn't 
+necessarily a gauge of how well the decision tree will work. Instead, it depends
+more on which examples are used to induce the tree, and which attributes are
+chosen at the higher levels of the trees. If the examples used as test cases
+don't happen to correspond well with the tree, then the accuracy level is going
+to be low.
+
+For example, if the examples used to induce the tree all have similar numbers of
+holes but varying shapes and sizes, the tree will used holes as a last resort
+attribute (near the leaves of the tree). However, if the test case examples all 
+have similar shapes and sizes but different numbers of holes, the tree won't be
+able to accurately classify the examples, since holes had a low gain ratio 
+initially when inducing the tree.
+
+
+
+
+================================================================================
+Task 5
+================================================================================
+
+Example 1) Washer was asserted three times.
+
+	holes
+	   none
+	      size
+		 small ==> screw
+		 large ==> pen
+	   1
+	      shape
+		 long ==> key
+		 compact
+		    size
+		       small ==> washer
+		       large ==> null
+		 other ==> null
+	   2
+	      size
+		 small ==> key
+		 large ==> scissors
+	   3 ==> null
+	   many ==> null
+
+
+Example 2) Pencil was asserted three times 
+		assert(example(pencil,[size=large,shape=long,holes=none])).
+
+	holes
+	   none
+	      size
+		 small ==> screw
+		 large
+		    shape
+		       long ==> pencil
+		       compact ==> null
+		       other ==> null
+	   1
+	      shape
+		 long ==> key
+		 compact ==> nut
+		 other ==> null
+	   2
+	      size
+		 small ==> key
+		 large ==> scissors
+	   3 ==> null
+	   many ==> null
+
+
+Example 3) Cap was asserted to be the same as washers and nuts. This example
+shows that our solution works for multiple (more than 2) classes all with the
+same description.
+		assert(example(cap,[size=small,shape=compact,holes=1])).
+
+	holes
+	   none
+	      size
+		 small ==> screw
+		 large ==> pen
+	   1
+	      shape
+		 long ==> key
+		 compact
+		    size
+		       small ==> cap
+		       large ==> null
+		 other ==> null
+	   2
+	      size
+		 small ==> key
+		 large ==> scissors
+	   3 ==> null
+	   many ==> null
+
+	
+
+
+Another method for assigning class values to leaves could be a 'most recently
+seen' algorithm. In this case, the later examples seen would be given priority
+in the tree. This is similar to the cache eviction policy of least recently used.
+The idea is that the examples seen most recently by the induction algorithm would
+be most likely to be used, so it is best to have those classes in the trees. This
+algorithm will obviously only be effective when the user pays attention to the
+order in which examples are listed before the tree is induced. 
+
+
+
+
+
 
 
 
