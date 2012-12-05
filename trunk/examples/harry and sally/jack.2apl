@@ -1,0 +1,20 @@
+Include: person.2apl
+
+Goals:
+  search( blockWorld )
+
+Plans:
+	@blockworld( associateWith(robot2), _ );
+  @blockworld( enter( 4, 4, yellow ), _ )
+
+PG-rules:
+  search( blockWorld ) <- true |
+  {
+    B(is( X, int( random( 15 ) ) ));
+    B(is( Y, int( random( 15 ) ) ));
+    goto( X, Y );
+    @blockworld( senseTraps(), TRAPS );
+    if B( TRAPS = [actionresult(  [[default,X1,Y1]|REST]  )] ) then
+    { send( harry, inform, trapAt( X1, Y1 ) )
+    }
+  }
