@@ -46,12 +46,12 @@ PC-rules:
   message( jack, inform, La, On, trapAt( X, Y ) ) <- true |
   {   
 	  if B( not trap( A, B ) ) then
-    { AddTrap();
-	AddTrap( X, Y );
+    { AddTrap( X, Y );
+		AddTrap()
     }
     else
-		{ AddTrap();
-		AddTrap( X, Y );
+		{ AddTrap( X, Y );
+			AddTrap()
 		}
 	}
 
