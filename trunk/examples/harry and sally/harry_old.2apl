@@ -1,0 +1,64 @@
+Include: person.2apl
+
+BeliefUpdates:
+  { bomb(X,Y) }         RemoveBomb(X,Y) { not bomb(X,Y) }
+	{ trapExists }      AddBomb(X,Y)    { bomb(X,Y) }
+	{ true }	AddTrap( )			{trapExists}
+	{ not trapExists }		AddTrap(X,Y) { trapExists(X,Y)}
+	{ carry( bomb ) }     Drop( )         { not carry( bomb ) }
+  { not carry( bomb ) } PickUp( )       { carry( bomb ) }
+
+Beliefs:
+  start(0,1).
+  clean( blockWorld ) :- not bomb(X,Y) , not carry(bomb).
+
+Plans:
+  B(start(X,Y)) ;
+  @blockworld( associateWith(robot0), _ );
+  @blockworld( enter( X, Y, blue ), _ )
+
+Goals:
+  clean( blockWorld )
+
+PG-rules:
+  clean( blockWorld ) <- bomb( X, Y ) and trapExists(A, B)|
+  {
+    goto( X, Y );
+    @blockworld( pickup( ), _ );
+		PickUp( );
+		RemoveBomb( X, Y );
+    goto( A, B );
+		@blockworld( drop( ), _ );
+    Drop( )
+	}
+
+PC-rules:
+  message( sally, inform, La, On, bombAt( X, Y ) ) <- true |
+  {   
+	  if B( not bomb( A, B ) ) then
+    { AddBomb( X, Y );
+		  adoptz( clean( blockWorld ) )
+    }
+    else
+		{ AddBomb( X, Y )
+		}
+	}
+  message( jack, inform, La, On, trapAt( X, Y ) ) <- true |
+  {   
+	  if B( not trap( A, B ) ) then
+    { AddTrap( X, Y );
+		AddTrap()
+    }
+    else
+		{ AddTrap( X, Y );
+			AddTrap()
+		}
+	}
+
+PR-rules:
+  @blockworld( pickup(), _ ); REST <- true |
+  {
+    @blockworld( sensePosition(), POS );
+    B(POS = [actionresult([X,Y])]);
+    RemoveBomb( X, Y )
+  }

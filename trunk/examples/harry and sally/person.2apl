@@ -21,3 +21,20 @@ PC-rules:
     }
   }
  PR-rules:
+ 
+ @blockworld(west(), _); REST <- true |
+  {
+  @blockworld(north(), L)
+  }
+ @blockworld(east(), _); REST <- true |
+  {
+  @blockworld(south(), L)
+  }
+ @blockworld(north(), _); REST <- true |
+  {
+  @blockworld(west(), L)
+  }
+ @blockworld(south(), _); REST <- true |
+  {
+  @blockworld(east(), L)
+  }
