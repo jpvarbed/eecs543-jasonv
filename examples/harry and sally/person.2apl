@@ -24,6 +24,7 @@ PC-rules:
  
  @blockworld(west(), _); REST <- true |
   {
+	
   @blockworld(north(), L)
   }
  @blockworld(east(), _); REST <- true |
