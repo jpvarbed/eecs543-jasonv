@@ -2,9 +2,11 @@ Include: person.2apl
 
 BeliefUpdates:
   { bomb(X,Y) }         RemoveBomb(X,Y) { not bomb(X,Y) }
+  {sallyAt(A,B)}		DropSally(A,B) { not sallyAt(A,B)}
 	{ trapExists }      AddBomb(X,Y)    { bomb(X,Y) }
 	{ true }	AddTrap( )			{trapExists}
-	{ not trapExists }		AddTrap(X,Y) { trapExists(X,Y)}
+	{ true }		AddTrap(X,Y) { trapExists(X,Y)}
+	{true} 		AddSally(X,Y)	{sallyAt(X,Y)}
 	{ carry( bomb ) }     Drop( )         { not carry( bomb ) }
   { not carry( bomb ) } PickUp( )       { carry( bomb ) }
 
@@ -18,8 +20,9 @@ Plans:
   @blockworld( enter( X, Y, blue ), _ )
 
 Goals:
-  clean( blockWorld )
-
+  clean( blockWorld ),
+  follow( blockWorld)
+ 
 PG-rules:
   clean( blockWorld ) <- bomb( X, Y ) and trapExists(A, B)|
   {
@@ -31,6 +34,27 @@ PG-rules:
 		@blockworld( drop( ), _ );
     Drop( )
 	}
+follow(blockWorld) <- sallyAt(X,Y) and not bomb(X1,Y1) and not carry(bomb)|
+{
+	@blockworld( sensePosition(), POS );
+    B(POS = [actionresult([A,B])]);
+    if B(A > X) then
+    { @blockworld( west(), L )
+
+    }
+    else if B(A < X) then
+    { @blockworld( east(), L )
+
+    }
+    else if B(B > Y) then
+    { @blockworld( north(), L )
+
+    }
+    else if B(B < Y) then
+    { @blockworld( south(), L )
+
+    }
+}
 
 PC-rules:
   message( sally, inform, La, On, bombAt( X, Y ) ) <- true |
@@ -43,17 +67,26 @@ PC-rules:
 		{ AddBomb( X, Y )
 		}
 	}
+ message( sally, inform, La, On, sallyAt( X, Y ) ) <- true |
+  {   
+	if B(trapExists and not sallyAt(A,B)) then
+	{
+		AddSally(X,Y);
+		adoptz(follow(blockWorld))
+	}
+	else if B(trapExists) then
+	{
+		DropSally(A,B);
+		AddSally(X,Y)
+	}
+  }
   message( jack, inform, La, On, trapAt( X, Y ) ) <- true |
   {   
-	  if B( not trap( A, B ) ) then
+	  if B( not trapExists( A, B ) ) then
     { AddTrap( X, Y );
 		AddTrap()
     }
-    else
-		{ AddTrap( X, Y );
-			AddTrap()
-		}
-	}
+}
 
 PR-rules:
   @blockworld( pickup(), _ ); REST <- true |
