@@ -5,15 +5,14 @@ Goals:
 
 Plans:
 	@blockworld( associateWith(robot1), _ );
-  @blockworld( enter( 3, 3, red ), _ )
+  @blockworld( enter( 5, 5, red ), _ )
 
 PG-rules:
   search( blockWorld ) <- true |
   {
-    B(is( X, int( random( 15 ) ) ));
-    B(is( Y, int( random( 15 ) ) ));
-    
-	send(harry, inform, sallyAt(X, Y));
+    B(is( X, int( random( 8 ) ) ));
+    B(is( Y, int( random( 8 ) ) ));
+    send(harry, inform, sallyAt(X, Y));
 	goto( X, Y );
     @blockworld( senseBombs(), BOMBS );
     if B( BOMBS = [actionresult(  [[default,X1,Y1]|REST]  )] ) then

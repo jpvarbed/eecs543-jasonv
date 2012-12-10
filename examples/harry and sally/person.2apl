@@ -24,18 +24,70 @@ PC-rules:
  
  @blockworld(west(), _); REST <- true |
   {
-	
-  @blockworld(north(), L)
+	@blockworld( senseAgent(), AGENTS);
+	B(AGENTS = [actionresult(AGENT)]);
+	@blockworld( senseStones(), STONES );
+	B(STONES = [actionresult(STONE)]);
+	@blockworld( sensePosition(), POS );
+    B(POS = [actionresult([A,B])]);
+    if B( member([_, A, B-1], AGENT) or member([_, A, B-1], STONE)) then
+    {
+		@blockworld(south(), L)
+    }
+	else
+	{
+		@blockworld(north(), L)
+	}
   }
  @blockworld(east(), _); REST <- true |
   {
-  @blockworld(south(), L)
+  @blockworld( senseAgent(), AGENTS );
+  	B(AGENTS = [actionresult(AGENT)]);
+	@blockworld( senseStones(), STONES);
+	B(STONES = [actionresult(STONE)]);
+	@blockworld( sensePosition(), POS );
+    B(POS = [actionresult([A,B])]);
+    if B( member([_, A, B+1], AGENT) or member([default, A, B+1], STONE)) then
+    {
+		@blockworld(north(), L)
+	}
+	else
+	{
+		@blockworld(south(), L)
+	}
+		
   }
  @blockworld(north(), _); REST <- true |
   {
-  @blockworld(west(), L)
+    @blockworld( senseAgent(), AGENTS);
+	B(AGENTS = [actionresult(AGENT)]);
+  	@blockworld( senseStones(), STONES );
+	B(STONES = [actionresult(STONE)]);
+	@blockworld( sensePosition(), POS );
+    B(POS = [actionresult([A,B])]);
+    if B( member([_, A+1, B], AGENT) or member([default, A+1, B], STONE)) then
+    {
+		@blockworld(west(), L)
+	}
+	else
+	{
+		@blockworld(east(), L)
+	}
   }
  @blockworld(south(), _); REST <- true |
   {
-  @blockworld(east(), L)
+	@blockworld( senseAgent(), AGENTS);
+	B(AGENTS = [actionresult(AGENT)]);
+  	@blockworld( senseStones(), STONES );
+	B(STONES = [actionresult(STONE)]);
+	@blockworld( sensePosition(), POS );
+    B(POS = [actionresult([A,B])]);
+    if B( member([_, A-1, B], AGENT) or member([default, A-1, B], STONE)) then
+    {
+		@blockworld(east(), L)
+	}
+	else
+	{
+		@blockworld(west(), L)
+	}
   }

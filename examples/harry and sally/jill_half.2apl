@@ -4,16 +4,15 @@ Goals:
   search( blockWorld )
 
 Plans:
- @blockworld( associateWith(robot3), _ );
-  @blockworld( enter( 14, 14, green ), _ )
+	@blockworld( associateWith(robot3), _ );
+  @blockworld( enter( 10, 10, green ), _ )
 
 PG-rules:
   search( blockWorld ) <- true |
   {
-    B(is( X, int( random( 15 ) ) ));
-    B(is( Y, int( random( 15 ) ) ));
-
-	goto( X, Y );
+    B(is( X, int( random( 8 ) ) ));
+    B(is( Y, int( random( 8 ) ) ));
+	goto( X+9, Y+9 );
     @blockworld( senseBombs(), BOMBS );
     if B( BOMBS = [actionresult(  [[default,X1,Y1]|REST]  )] ) then
     { send( harry, inform, bombAt( X1, Y1 ) )
