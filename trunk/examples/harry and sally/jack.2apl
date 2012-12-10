@@ -5,7 +5,7 @@ Goals:
 
 Plans:
 	@blockworld( associateWith(robot2), _ );
-  @blockworld( enter( 4, 4, yellow ), _ )
+  @blockworld( enter( 5, 5, yellow ), _ )
 
 PG-rules:
   search( blockWorld ) <- true |

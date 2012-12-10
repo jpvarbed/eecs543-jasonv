@@ -1,0 +1,48 @@
+Include: person.2apl
+
+Goals:
+  search( blockWorld )
+
+Plans:
+ @blockworld( associateWith(robot3), _ );
+  @blockworld( enter( 14, 15, green ), _ )
+
+PG-rules:
+  search( blockWorld ) <- true |
+  {
+	@blockworld( sensePosition(), POS );
+    B(POS = [actionresult([A,B])]);
+	if B(B = 15) then 
+	{
+		goto(13, 15)
+	}
+	else if B(A = 13 and B = 15) then
+	{
+		goto(13, 9)
+	}
+	else if B(A = 13 and B = 9) then
+	{
+		goto(13, 3)
+	}
+	else if B(B = 3) then
+	{
+		goto(14, 3)
+	}
+	else if B(A = 14 and B = 3) then
+	{
+		goto(14, 15)
+	}
+	else if B(B = 9 and A = 14) then
+	{
+		goto(14, 15)
+	}
+	else
+	{
+		goto(14, 15)
+	};
+    @blockworld( senseBombs(), BOMBS );
+    if B( BOMBS = [actionresult(  [[default,X1,Y1]|REST]  )] ) then
+    { send( harry, inform, bombAt( X1, Y1 ) )
+    }
+
+  }

@@ -1,0 +1,41 @@
+	Task 1:
+I implemented the traps and Jack just like Sally. Traps can be discovered and all bombs
+cleared.
+	Task 2 Collisons:
+I decided to introduce plan repair moves for west, north, south, and east and introduce
+randomness since if these repairs fail, they won't call another repair.
+If an agent tries to go east and fails, it will have a 1 in 4 chance of going south,
+and a 3 in 4 chance of going north. West is the opposite and north/south do the same
+with east/west. In this way, if two robots are trying to go in the exact opposite direction,
+then they will go in opposite to fix it(most of the time). 
+If agents collide on the edges, then without the randomness, they can get stuck.
+They will remain stuck until the right combo of random movements get them out 
+(which normally isn't that long).
+In most cases, the robots will have to travel farther to get to their destination.
+	Task 3 Following:
+
+Task 4:
+Independent search: jill.2apl and sally.2apl
+
+Half and Half: jill_half.2apl and sally_half.2apl
+
+I found that having jill and sally split was the most robust and efficient of the 
+half, independent, and just sally strategies.
+
+Improved: jill_improved_search.2apl and sally_improved_seach.2apl
+I assumed that the world will always be 16x16 since sally has random(15) 
+hardcoded.
+The most efficient plan will have the scan areas not intersect the most.
+The circles have a diameter of 10. To get the left corner, the robots must be in these positions:
+3,3 (UL); 14,3 (UR); 3,15 (LL); 14,15 (LR)
+If we had each robot patrol up and down, then we would miss the middle row. My plan
+has one robot move one square closer to the center each way.
+In this way, the circles never intersect and all squares get covered.
+This one is efficient and robust since it covers as much area as it can. It has 
+the best performance.
+
+Task 5:
+Harry should be responsible for the deletion of a trap since he keeps
+the state/belief. Since Harry cannot sense traps or bombs, he must rely on state and messages.
+My addition makes it do that if Henry fails on a drop or is told that there is a bomb
+where he thinks there is trap, he knows he dropped a bomb where a trap was erased.
